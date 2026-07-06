@@ -127,11 +127,11 @@ struct GameConstants {
     // and "wasted" horizontal space. 14 rows lets the board fill edge to
     // edge at full tile width instead.
     static let rows = 14
-    static let minWordLength = 2
-    // Diagonal adjacency is much harder to visually parse than horizontal
-    // or vertical, so a 2-letter diagonal read (e.g. "EM") tends to read as
-    // an unrelated tile lighting up for no visible reason. Diagonals need
-    // 3+ letters before they count; horizontal/vertical keep minWordLength.
+    // 3-letter minimum in every direction. 2-letter words were tried but
+    // felt like noise — too many trivial clears lighting up, and they cheapen
+    // the "find a real word" payoff. Diagonals were already 3+ (a 2-letter
+    // diagonal reads as an unrelated tile glowing); now the whole board is.
+    static let minWordLength = 3
     static let minDiagonalWordLength = 3
     static let dangerRow = 2
     static let bombInterval = 25
@@ -1390,12 +1390,10 @@ class GameModel: ObservableObject {
     }
     
     private func calculateScore(_ word: String) -> Int {
-        // 2-letter words get a small flat base instead of sitting on the
-        // same quadratic curve as everything else — the curve alone (40 vs
-        // 90 for a 3-letter word) wasn't enough of a gap to stop players
-        // from grabbing an easy 2-letter clear instead of waiting for a
-        // longer word. 3+ letter words are untouched.
-        let baseScore = word.count <= 2 ? 5 : word.count * word.count * 10 // quadratic: longer = much better
+        // Quadratic in length — longer words are worth much more than a
+        // string of short ones. (Words are 3+ letters now; the old
+        // flat-rate discount for 2-letter words is gone with them.)
+        let baseScore = word.count * word.count * 10
         let comboMultiplier = max(1, comboCount)
         let levelMultiplier = level
         let difficultyMultiplier = settings.difficulty.scoreMultiplier
