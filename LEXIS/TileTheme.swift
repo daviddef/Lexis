@@ -6,7 +6,11 @@ import SwiftUI
 // small collection layer unlocked by real milestones gives long-term
 // players a reason to keep opening the app after they've "mastered" the
 // scoring, without touching balance.
-@MainActor
+// Not @MainActor as a whole: the enum itself, its id, colors, and Codable/
+// CaseIterable conformances are pure value logic that must stay nonisolated
+// (marking the enum @MainActor makes its Identifiable conformance cross into
+// main-actor code — a data-race warning, and a Swift 6 error). Only
+// isUnlocked touches main-actor singletons, so only it is @MainActor below.
 enum TileTheme: String, CaseIterable, Identifiable, Codable {
     case classic = "Classic"
     case sunset = "Sunset"
@@ -65,6 +69,10 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    // Reads main-actor singletons (DailyChallengeManager / GameSettings), so
+    // this member is main-actor isolated while the rest of the enum stays
+    // nonisolated. Callers are all UI (already on the main actor).
+    @MainActor
     var isUnlocked: Bool {
         switch self {
         case .classic:

@@ -151,7 +151,12 @@ class GameCenterManager: NSObject, ObservableObject {
 
 extension GameCenterManager: GKGameCenterControllerDelegate {
     nonisolated func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
-        gameCenterViewController.dismiss(animated: true)
+        // The delegate callback is nonisolated, but dismiss() is main-actor
+        // isolated (it's UIKit), so hop to the main actor to call it —
+        // otherwise this is a data-race warning today and an error in Swift 6.
+        Task { @MainActor in
+            gameCenterViewController.dismiss(animated: true)
+        }
     }
 }
 
