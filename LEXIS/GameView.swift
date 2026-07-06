@@ -49,32 +49,45 @@ struct GameView: View {
                 .stroke(Color.lexisBlockBorder.opacity(0.12), lineWidth: 0.5)
                 .allowsHitTesting(false)
 
-                switch model.phase {
-                case .menu:
-                    MenuView(model: model, showSettings: $showSettings, showDifficultySelect: $showDifficultySelect)
-                case .playing, .paused:
-                    PlayingView(
-                        model: model,
-                        tileSize: tileSize,
-                        showWildcardPicker: $showWildcardPicker,
-                        selectedTiles: $selectedTiles,
-                        wordFlashText: $wordFlashText,
-                        wordFlashOpacity: $wordFlashOpacity,
-                        wordFlashColor: $wordFlashColor,
-                        showSettings: $showSettings
-                    )
-                case .gameOver:
-                    if model.isDuelMode, let duel = model.duelResult {
-                        DuelResultView(code: duel.code, score: duel.score, phase: $model.phase)
-                    } else if model.isDailyMode, let result = model.dailyManager.todayResult {
-                        DailyResultView(result: result, streak: model.dailyManager.currentStreak)
-                            .onDisappear {
-                                model.phase = .menu
+                // Phase content, cross-faded with a subtle scale so moving
+                // between menu / play / game-over feels like one continuous
+                // space rather than an abrupt screen swap. The
+                // .animation(value:) drives the child insert/remove
+                // transitions off the phase change wherever it's set.
+                Group {
+                    switch model.phase {
+                    case .menu:
+                        MenuView(model: model, showSettings: $showSettings, showDifficultySelect: $showDifficultySelect)
+                            .transition(.opacity.combined(with: .scale(scale: 1.03)))
+                    case .playing, .paused:
+                        PlayingView(
+                            model: model,
+                            tileSize: tileSize,
+                            showWildcardPicker: $showWildcardPicker,
+                            selectedTiles: $selectedTiles,
+                            wordFlashText: $wordFlashText,
+                            wordFlashOpacity: $wordFlashOpacity,
+                            wordFlashColor: $wordFlashColor,
+                            showSettings: $showSettings
+                        )
+                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    case .gameOver:
+                        Group {
+                            if model.isDuelMode, let duel = model.duelResult {
+                                DuelResultView(code: duel.code, score: duel.score, phase: $model.phase)
+                            } else if model.isDailyMode, let result = model.dailyManager.todayResult {
+                                DailyResultView(result: result, streak: model.dailyManager.currentStreak)
+                                    .onDisappear {
+                                        model.phase = .menu
+                                    }
+                            } else {
+                                GameOverView(model: model, showDifficultySelect: $showDifficultySelect)
                             }
-                    } else {
-                        GameOverView(model: model, showDifficultySelect: $showDifficultySelect)
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 1.03)))
                     }
                 }
+                .animation(.easeInOut(duration: 0.4), value: model.phase)
 
                 // Danger-zone vignette — escalates with dangerSeverity
                 // (fraction of columns crowding the danger zone) rather than
@@ -143,6 +156,10 @@ struct PlayingView: View {
     
     @State private var boardOffset: CGFloat = 0
     @State private var wordBurst: Bool = false
+    // The "+N" that floats up with the word flash on a clear, and whether it's
+    // mid-rise, so the whole word+score group drifts upward as it fades.
+    @State private var wordFlashScore: Int = 0
+    @State private var wordFlashRise: Bool = false
     @State private var previewedWords: [WordResult] = []
     @State private var previewDismissTask: DispatchWorkItem?
     // How much horizontal drag has already been "spent" moving the piece
@@ -660,15 +677,26 @@ struct PlayingView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
 
-                // Word flash overlay
+                // Word flash overlay — the cleared word pops in at board
+                // center with its "+score" beneath, then the whole group
+                // drifts upward as it fades, so every clear reads as points
+                // lifting off the board rather than a static label blinking.
                 if wordFlashOpacity > 0 {
-                    Text(wordFlashText)
-                        .font(.system(size: 32, weight: .black, design: .rounded))
-                        .foregroundColor(wordFlashColor)
-                        .shadow(color: wordFlashColor.opacity(0.8), radius: 12)
-                        .opacity(wordFlashOpacity)
-                        .scaleEffect(wordFlash: wordBurst)
-                        .allowsHitTesting(false)
+                    VStack(spacing: 2) {
+                        Text(wordFlashText)
+                            .font(.system(size: 34, weight: .black, design: .rounded))
+                            .foregroundColor(wordFlashColor)
+                            .shadow(color: wordFlashColor.opacity(0.85), radius: 14)
+                        Text("+\(wordFlashScore)")
+                            .font(.system(size: 21, weight: .black, design: .monospaced))
+                            .foregroundColor(.lexisGold)
+                            .shadow(color: Color.lexisGold.opacity(0.7), radius: 8)
+                    }
+                    .opacity(wordFlashOpacity)
+                    .scaleEffect(wordBurst ? 1.12 : 1.0)
+                    .offset(y: wordFlashRise ? -72 : 0)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.5), value: wordBurst)
+                    .allowsHitTesting(false)
                 }
 
                 // Perfect Clear celebration — a clear that happened to empty
@@ -1021,14 +1049,22 @@ struct PlayingView: View {
 
     func triggerWordFlash(_ result: WordResult) {
         wordFlashText = result.word.uppercased()
+        wordFlashScore = result.score
         wordFlashColor = result.isChain ? .lexisCombo : (result.word.count >= 6 ? .lexisGold : .lexisAccent)
+        // Snap back to the resting position instantly (no animation) before
+        // this clear's drift begins, so a rapid combo doesn't visibly yank
+        // the previous flash back down.
+        wordFlashRise = false
         wordBurst = true
-        
-        withAnimation(.spring(response: 0.15)) {
+
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.6)) {
             wordFlashOpacity = 1
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation(.easeOut(duration: 0.4)) {
+        withAnimation(.easeOut(duration: 1.0)) {
+            wordFlashRise = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            withAnimation(.easeOut(duration: 0.45)) {
                 wordFlashOpacity = 0
                 wordBurst = false
             }
@@ -1771,14 +1807,15 @@ struct MenuView: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                         .fill(Color.lexisGold.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                                 .strokeBorder(Color.lexisGold.opacity(0.35), lineWidth: 1.5)
                         )
                 )
             }
+            .buttonStyle(LexisScaleButtonStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
 
@@ -1816,14 +1853,15 @@ struct MenuView: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                         .fill(Color.lexisAccent.opacity(0.08))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                                 .strokeBorder(Color.lexisAccent.opacity(0.3), lineWidth: 1.5)
                         )
                 )
             }
+            .buttonStyle(LexisScaleButtonStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             .sheet(isPresented: $showDuelSetup) {
@@ -1855,19 +1893,10 @@ struct MenuView: View {
                 }
             } label: {
                 Text("PLAY ENDLESS")
-                    .font(.system(size: 20, weight: .black, design: .rounded))
-                    .foregroundColor(Color.lexisBg)
-                    .tracking(4)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.lexisAccent)
-                            .shadow(color: Color.lexisAccent.opacity(0.4), radius: 16, y: 6)
-                    )
             }
+            .buttonStyle(LexisPrimaryButtonStyle())
             .padding(.horizontal, 32)
-            
+
             Spacer()
         }
         .sheet(isPresented: $showDailyResults) {
@@ -2115,22 +2144,18 @@ struct GameOverView: View {
                 
                 // Words found
                 if !model.foundWords.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("WORDS YOU MADE")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundColor(.lexisMid)
-                            .tracking(2)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(model.foundWords.prefix(15)) { word in
-                                    WordChip(result: word)
+                    LexisCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SectionLabel("WORDS YOU MADE")
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(model.foundWords.prefix(15)) { word in
+                                        WordChip(result: word)
+                                    }
                                 }
                             }
                         }
                     }
-                    .padding(16)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
                 }
                 
                 // Difficulty picker — the exact same cards as the main menu,
@@ -2151,17 +2176,8 @@ struct GameOverView: View {
                         withAnimation(.spring()) { model.startGame() }
                     } label: {
                         Text("PLAY AGAIN")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundColor(Color.lexisBg)
-                            .tracking(4)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 18)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.lexisAccent)
-                                    .shadow(color: Color.lexisAccent.opacity(0.4), radius: 16, y: 6)
-                            )
                     }
+                    .buttonStyle(LexisPrimaryButtonStyle())
 
                     HStack(spacing: 12) {
                         Button {
@@ -2171,18 +2187,9 @@ struct GameOverView: View {
                                 Image(systemName: "trophy.fill")
                                     .font(.system(size: 13, weight: .bold))
                                 Text("TOP SCORES")
-                                    .font(.system(size: 13, weight: .black, design: .rounded))
-                                    .tracking(1)
                             }
-                            .foregroundColor(.lexisGold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.lexisGold.opacity(0.1))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisGold.opacity(0.35), lineWidth: 1.5))
-                            )
                         }
+                        .buttonStyle(LexisSecondaryButtonStyle(tint: .lexisGold))
 
                         // Every mode's best moments should be exportable,
                         // not just Daily Challenge.
@@ -2193,31 +2200,17 @@ struct GameOverView: View {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.system(size: 13, weight: .bold))
                                 Text("SHARE")
-                                    .font(.system(size: 13, weight: .black, design: .rounded))
-                                    .tracking(1)
                             }
-                            .foregroundColor(.lexisAccent)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.lexisAccent.opacity(0.1))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisAccent.opacity(0.35), lineWidth: 1.5))
-                            )
                         }
+                        .buttonStyle(LexisSecondaryButtonStyle(tint: .lexisAccent))
                     }
 
                     Button {
                         withAnimation(.spring()) { model.phase = .menu }
                     } label: {
                         Text("MAIN MENU")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .tracking(1)
-                            .foregroundColor(.lexisMid)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock))
                     }
+                    .buttonStyle(LexisGhostButtonStyle())
                 }
                 .padding(24)
                 }
@@ -2253,10 +2246,7 @@ struct DifficultyCardsRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("SELECT DIFFICULTY")
-                .font(.system(size: 11, weight: .black, design: .monospaced))
-                .foregroundColor(.lexisMid)
-                .tracking(2)
+            SectionLabel("SELECT DIFFICULTY")
                 .padding(.horizontal, 24)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -2284,14 +2274,16 @@ struct DifficultyCardsRow: View {
                             .foregroundColor(isSelected ? Color.lexisBg : .lexisMid)
                             .frame(width: 76, height: 76)
                             .background(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                                     .fill(isSelected ? Color.lexisAccent : Color.lexisBlock.opacity(0.7))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
+                                        RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                                             .strokeBorder(isSelected ? Color.clear : Color.lexisBlockBorder.opacity(0.3), lineWidth: 1)
                                     )
+                                    .shadow(color: isSelected ? Color.lexisAccent.opacity(0.4) : .clear, radius: 10, y: 3)
                             )
                         }
+                        .buttonStyle(LexisScaleButtonStyle())
                     }
                 }
                 .padding(.horizontal, 24)
@@ -2475,14 +2467,9 @@ struct DuelSetupSheet: View {
                         HStack(spacing: 8) {
                             Image(systemName: "plus.circle.fill")
                             Text("START A NEW DUEL")
-                                .tracking(1)
                         }
-                        .font(.system(size: 16, weight: .black, design: .rounded))
-                        .foregroundColor(Color.lexisBg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisAccent))
                     }
+                    .buttonStyle(LexisPrimaryButtonStyle())
                     .padding(.horizontal, 20)
 
                     VStack(spacing: 10) {
@@ -2572,14 +2559,9 @@ struct DuelResultView: View {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 15, weight: .bold))
                         Text("SHARE CHALLENGE")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
-                            .tracking(1)
                     }
-                    .foregroundColor(Color.lexisBg)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisGold))
                 }
+                .buttonStyle(LexisPrimaryButtonStyle(tint: .lexisGold))
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
 
@@ -2587,10 +2569,10 @@ struct DuelResultView: View {
                     phase = .menu
                 } label: {
                     Text("MAIN MENU")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(.lexisMid)
                 }
-                .padding(.top, 8)
+                .buttonStyle(LexisGhostButtonStyle())
+                .padding(.horizontal, 24)
+                .padding(.top, 4)
 
                 Spacer()
             }
@@ -2681,14 +2663,9 @@ struct DailyResultView: View {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.system(size: 15, weight: .bold))
                                 Text("SHARE RESULT")
-                                    .font(.system(size: 15, weight: .black, design: .rounded))
-                                    .tracking(2)
                             }
-                            .foregroundColor(Color.lexisBg)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisGold))
                         }
+                        .buttonStyle(LexisPrimaryButtonStyle(tint: .lexisGold))
                         .padding(.horizontal, 20)
 
                         // Today's Daily Challenge is the same 40 letters for
@@ -2704,18 +2681,9 @@ struct DailyResultView: View {
                                     Image(systemName: "person.2.fill")
                                         .font(.system(size: 14, weight: .bold))
                                     Text("SEE HOW OTHERS DID TODAY")
-                                        .font(.system(size: 13, weight: .black, design: .rounded))
-                                        .tracking(1)
                                 }
-                                .foregroundColor(.lexisAccent)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.lexisAccent.opacity(0.1))
-                                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisAccent.opacity(0.35), lineWidth: 1.5))
-                                )
                             }
+                            .buttonStyle(LexisSecondaryButtonStyle(tint: .lexisAccent))
                             .padding(.horizontal, 20)
                             .confirmationDialog("Today's Leaderboard", isPresented: $showLeaderboardScopeDialog) {
                                 Button("Everyone") {

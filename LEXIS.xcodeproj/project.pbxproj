@@ -20,6 +20,7 @@
 		A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */; };
 		A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB923545BDA3934E8D366F7 /* GameView.swift */; };
 		AA63142E2878FE3249667222 /* lexis_dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7E6663358510107CC9386D8 /* lexis_dictionary.txt */; };
+		BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A89042EB531104FA876E293 /* DesignSystem.swift */; };
 		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -56,6 +57,7 @@
 		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		8A89042EB531104FA876E293 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		91BD40CA77F62987EA453C39 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LEXIS.entitlements; sourceTree = "<group>"; };
 		9BB923545BDA3934E8D366F7 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
@@ -82,6 +84,7 @@
 			children = (
 				C1397824B81287256A25848F /* Assets.xcassets */,
 				35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */,
+				8A89042EB531104FA876E293 /* DesignSystem.swift */,
 				58CFDE30095075626DBA2E44 /* GameCenterManager.swift */,
 				A41DDE36C3A5E46BA85D5578 /* GameModel.swift */,
 				9BB923545BDA3934E8D366F7 /* GameView.swift */,
@@ -231,6 +234,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */,
+				BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */,
 				5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */,
 				22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */,
 				A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */,
