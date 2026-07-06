@@ -31,6 +31,15 @@ struct WordResult: Identifiable, Equatable {
     let isChain: Bool
 }
 
+// MARK: - Bomb blast
+// A one-shot marker that a bomb just detonated in `col`. The unique id lets
+// the view restart its explosion animation even when two bombs go off in
+// the same column back to back.
+struct BombBlast: Equatable {
+    let id = UUID()
+    let col: Int
+}
+
 // MARK: - Game State
 enum GamePhase {
     case menu, playing, paused, gameOver
@@ -112,8 +121,18 @@ enum Difficulty: String, CaseIterable, Identifiable, Codable {
 // MARK: - Game Constants
 struct GameConstants {
     static let cols = 9
+    // 14 rows (not 16): with the control chrome (header + word strip) inside
+    // the safe area, a 16-row board is taller than the screen can show at
+    // full tile width, so it gets shrunk to fit height — leaving side gaps
+    // and "wasted" horizontal space. 14 rows lets the board fill edge to
+    // edge at full tile width instead.
     static let rows = 14
     static let minWordLength = 2
+    // Diagonal adjacency is much harder to visually parse than horizontal
+    // or vertical, so a 2-letter diagonal read (e.g. "EM") tends to read as
+    // an unrelated tile lighting up for no visible reason. Diagonals need
+    // 3+ letters before they count; horizontal/vertical keep minWordLength.
+    static let minDiagonalWordLength = 3
     static let dangerRow = 2
     static let bombInterval = 25
     static let dynamiteInterval = 18
@@ -309,7 +328,16 @@ enum Haptics {
         gen.impactOccurred()
         #endif
     }
-    
+    // A heavy thud for big, physical events (bomb detonation). Full-intensity
+    // impact — meatier than medium/rigid.
+    static func heavy() {
+        guard GameSettings.shared.hapticsEnabled else { return }
+        #if canImport(UIKit)
+        let gen = UIImpactFeedbackGenerator(style: .heavy)
+        gen.impactOccurred(intensity: 1.0)
+        #endif
+    }
+
     // A very soft tick used every time a piece naturally settles — meant to
     // be felt as rhythm during fast play rather than as an "event," so it
     // uses the lightest possible intensity rather than reusing .light()
@@ -376,6 +404,10 @@ class GameModel: ObservableObject {
     @Published var blocksDropped: Int = 0
     @Published var foundWords: [WordResult] = []
     @Published var shakeBoard: Bool = false
+    // Non-nil for ~0.8s right after a bomb detonates, so the view can play a
+    // one-shot explosion burst at the detonation column. Carries a fresh id
+    // each time so back-to-back bombs each re-trigger the animation.
+    @Published var bombBlast: BombBlast? = nil
     @Published var dangerZoneActive: Bool = false
     @Published var bombsAvailable: Int = 0   // banked "clear path" charges the player can trigger manually
     @Published var justUsedBomb: Bool = false
@@ -458,6 +490,7 @@ class GameModel: ObservableObject {
         isFrozen = false
         peekLetters = []
         foundWords = []
+        pendingWords = []
         lastWordResult = nil
         isDailyMode = false
         isDuelMode = false
@@ -501,6 +534,7 @@ class GameModel: ObservableObject {
         isFrozen = false
         peekLetters = []
         foundWords = []
+        pendingWords = []
         lastWordResult = nil
         isDailyMode = true
         isDuelMode = false
@@ -533,6 +567,7 @@ class GameModel: ObservableObject {
         isFrozen = false
         peekLetters = []
         foundWords = []
+        pendingWords = []
         lastWordResult = nil
         isDailyMode = false
         isDuelMode = true
@@ -826,7 +861,7 @@ class GameModel: ObservableObject {
         Haptics.medium()
         placeLetter()
     }
-    
+
     // MARK: - Soft drop
     // Dragging downward accelerates the fall rather than instantly slamming
     // to the bottom (that's dropFast/double-tap). This gives players a
@@ -877,10 +912,9 @@ class GameModel: ObservableObject {
     func triggerBankedBomb() {
         guard bombsAvailable > 0, phase == .playing else { return }
         bombsAvailable -= 1
+        triggerBombBlast(col: fallingCol)
         clearColumn(fallingCol)
         justUsedBomb = true
-        Haptics.success()
-        SoundManager.powerUp()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             self.justUsedBomb = false
         }
@@ -891,6 +925,24 @@ class GameModel: ObservableObject {
             grid[row][col] = nil
         }
         checkDangerZone()
+    }
+
+    // Fires the explosion juice for a bomb detonation in `col`: a one-shot
+    // burst marker the view animates, a heavy board shake, a chunky haptic,
+    // and the power-up chime. Kept separate from clearColumn so the banked
+    // bomb and the falling-bomb-tile path share identical feedback.
+    private func triggerBombBlast(col: Int) {
+        let blast = BombBlast(col: col)
+        bombBlast = blast
+        shakeBoard = true
+        Haptics.heavy()
+        SoundManager.explosion()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            self.shakeBoard = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+            if self.bombBlast?.id == blast.id { self.bombBlast = nil }
+        }
     }
 
     // Centralized so every placeLetter() branch (bomb, dynamite, normal
@@ -1070,9 +1122,8 @@ class GameModel: ObservableObject {
         
         // Bomb tiles clear their landing column instead of becoming a permanent tile
         if isBomb {
+            triggerBombBlast(col: fallingCol)
             clearColumn(fallingCol)
-            Haptics.success()
-            SoundManager.powerUp()
             updateLevel()
             checkDangerZone()
             spawnNewLetter()
@@ -1221,8 +1272,8 @@ class GameModel: ObservableObject {
                     tiles.append(tile)
                     r += 1; c += 1
                 }
-                if tiles.count >= GameConstants.minWordLength {
-                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier)
+                if tiles.count >= GameConstants.minDiagonalWordLength {
+                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier, minLength: GameConstants.minDiagonalWordLength)
                 }
             }
         }
@@ -1236,8 +1287,8 @@ class GameModel: ObservableObject {
                     tiles.append(tile)
                     r += 1; c -= 1
                 }
-                if tiles.count >= GameConstants.minWordLength {
-                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier)
+                if tiles.count >= GameConstants.minDiagonalWordLength {
+                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier, minLength: GameConstants.minDiagonalWordLength)
                 }
             }
         }
@@ -1276,9 +1327,9 @@ class GameModel: ObservableObject {
     // pass this at 1.25 (see findAllWords) since there's otherwise no
     // mechanical reason to hunt for a diagonal over an easier horizontal or
     // vertical read.
-    private func checkSubstrings(of tiles: [LetterTile], results: inout [WordResult], usedPositions: inout Set<String>, scoreMultiplier: Double = 1.0) {
-        guard tiles.count >= GameConstants.minWordLength else { return }
-        
+    private func checkSubstrings(of tiles: [LetterTile], results: inout [WordResult], usedPositions: inout Set<String>, scoreMultiplier: Double = 1.0, minLength: Int = GameConstants.minWordLength) {
+        guard tiles.count >= minLength else { return }
+
         // First pass: collect every valid (word, tileRange) match in this
         // run, without filtering yet.
         struct Candidate {
@@ -1286,12 +1337,12 @@ class GameModel: ObservableObject {
             let range: Range<Int> // index range within `tiles`
         }
         var candidates: [Candidate] = []
-        
+
         for start in 0..<tiles.count {
             var word = ""
             for i in start..<tiles.count {
                 word.append(tiles[i].letter)
-                if word.count >= GameConstants.minWordLength && validator.isValid(word) {
+                if word.count >= minLength && validator.isValid(word) {
                     candidates.append(Candidate(word: word, range: start..<(i + 1)))
                 }
             }
@@ -1339,7 +1390,12 @@ class GameModel: ObservableObject {
     }
     
     private func calculateScore(_ word: String) -> Int {
-        let baseScore = word.count * word.count * 10 // quadratic: longer = much better
+        // 2-letter words get a small flat base instead of sitting on the
+        // same quadratic curve as everything else — the curve alone (40 vs
+        // 90 for a 3-letter word) wasn't enough of a gap to stop players
+        // from grabbing an easy 2-letter clear instead of waiting for a
+        // longer word. 3+ letter words are untouched.
+        let baseScore = word.count <= 2 ? 5 : word.count * word.count * 10 // quadratic: longer = much better
         let comboMultiplier = max(1, comboCount)
         let levelMultiplier = level
         let difficultyMultiplier = settings.difficulty.scoreMultiplier
@@ -1412,6 +1468,21 @@ class GameModel: ObservableObject {
         
         // Apply gravity after clearing
         applyGravity()
+
+        // Invalidate glow state immediately rather than waiting for the
+        // cascade-reveal rescan below. Without this, grid markers and
+        // pendingWords keep referencing pre-gravity tile positions for the
+        // full 0.3s gap — a double-tap landing in that window could resolve
+        // to a stale WordResult and delete whatever tile gravity happened
+        // to shift into those old coordinates, not the tiles the player
+        // actually tapped.
+        for row in 0..<GameConstants.rows {
+            for col in 0..<GameConstants.cols {
+                grid[row][col]?.glowingWordID = nil
+            }
+        }
+        pendingWords = []
+
         checkDangerZone()
 
         // Perfect Clear: the clear we just processed happened to empty the
@@ -1468,10 +1539,17 @@ class GameModel: ObservableObject {
             for row in 0..<GameConstants.rows {
                 grid[row][col] = nil
             }
-            // Restack from bottom
+            // Restack from bottom. Dropping any leftover glowingWordID here
+            // matters: a tile carrying a stale glow marker to its new
+            // position would let a double-tap resolve to a WordResult whose
+            // tile coordinates gravity has since reassigned to different
+            // letters — the exact bug where a clear removed/left the wrong
+            // tiles. Whatever glow state applies post-shift gets
+            // recomputed by the next markGlowingWords() call.
             for (i, var tile) in tiles.reversed().enumerated() {
                 let newRow = GameConstants.rows - 1 - i
                 tile.row = newRow
+                tile.glowingWordID = nil
                 grid[newRow][col] = tile
             }
         }
@@ -1546,14 +1624,28 @@ class GameModel: ObservableObject {
         return Array(sorted.prefix(5).map { $0.element })
     }
     
+    // Every pending word whose tiles include this cell. A tile can be part
+    // of more than one pending word at once (e.g. an intersecting
+    // horizontal and vertical word sharing a letter), but
+    // markGlowingWords() only stamps ONE glowingWordID per tile — whichever
+    // word was marked last wins that stamp. Resolving a tap through that
+    // single ID meant it only ever found one of the words touching a
+    // shared tile. Shared by doubleTapClear (clears all matches) and the
+    // single-tap word-info preview (shows all matches).
+    func pendingWords(at row: Int, col: Int) -> [WordResult] {
+        pendingWords.filter { word in
+            word.tiles.contains { $0.row == row && $0.col == col }
+        }
+    }
+
     // MARK: - Double-tap to clear a glowing word
     // Called when the player double-taps a tile. Only tiles currently
     // glowing (part of a detected, not-yet-banked word) respond — tapping
     // a non-glowing tile does nothing, since there's nothing to confirm.
     func doubleTapClear(row: Int, col: Int) {
-        guard let wordID = grid[row][col]?.glowingWordID else { return }
-        guard let word = pendingWords.first(where: { $0.id == wordID }) else { return }
-        processWords([word])
+        let matches = pendingWords(at: row, col: col)
+        guard !matches.isEmpty else { return }
+        processWords(matches)
     }
     
     // MARK: - Hint

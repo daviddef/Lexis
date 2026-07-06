@@ -38,14 +38,20 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
 
     // Blended in as tiles age, same as the classic theme's existing
     // "older tiles redden" treatment — just each theme's own accent instead
-    // of always red.
+    // of always red. Every accent needs to stay visually distinct from the
+    // board's "word is glowing, ready to clear" yellow (see TileView's
+    // isGlowing fill/border) — the Gold theme's accent originally sat right
+    // on top of that same bright yellow, so an old, ordinary tile could
+    // look indistinguishable from an actually-glowing one at a glance.
+    // Shifted toward a deeper bronze/copper to keep the "gold" identity
+    // without the collision.
     var ageAccent: Color {
         switch self {
         case .classic: return .lexisDanger
         case .sunset: return Color(red: 1.0, green: 0.45, blue: 0.15)
         case .ocean: return Color(red: 0.3, green: 0.75, blue: 0.95)
         case .violet: return Color(red: 0.75, green: 0.4, blue: 0.95)
-        case .gold: return Color(red: 1.0, green: 0.85, blue: 0.3)
+        case .gold: return Color(red: 0.72, green: 0.42, blue: 0.06)
         }
     }
 

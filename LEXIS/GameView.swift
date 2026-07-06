@@ -119,11 +119,11 @@ struct GameView: View {
     // the whole PlayingView layout on-screen everywhere.
     private func tileSize(for size: CGSize) -> CGFloat {
         let widthBased = (size.width - 2 * boardHorizontalPadding) / CGFloat(GameConstants.cols) - 2
-        // Reduced from 340 after removing the redundant DROP button and then
-        // again after moving the NEXT-letter preview into the header and the
-        // gesture hint into Settings — the controls panel is now usually
-        // empty during normal play. If you change GameConstants.rows/cols or
-        // add substantial new permanent UI chrome, revisit this constant.
+        // Budget for the non-board chrome: header, recent-words strip, and
+        // the (usually empty) power-up panel. Tuned so a 14-row board fills
+        // the width edge to edge (tile size limited by width, not height)
+        // on a typical phone. If you change GameConstants.rows/cols or add
+        // substantial new permanent UI chrome, revisit this constant.
         let reservedChromeHeight: CGFloat = 170
         let heightBased = (size.height - reservedChromeHeight) / CGFloat(GameConstants.rows) - 2
         return min(widthBased, heightBased)
@@ -143,8 +143,51 @@ struct PlayingView: View {
     
     @State private var boardOffset: CGFloat = 0
     @State private var wordBurst: Bool = false
-    @State private var dragAccumulator: CGFloat = 0
+    @State private var previewedWords: [WordResult] = []
+    @State private var previewDismissTask: DispatchWorkItem?
+    // How much horizontal drag has already been "spent" moving the piece
+    // this gesture — lets a continuous slide across the board step the piece
+    // column by column as the finger travels, then resets on release.
+    @State private var boardDragAccum: CGFloat = 0
     @FocusState private var boardFocused: Bool
+
+    // Every board position covered by the currently-previewed word(s), for
+    // the bright-orange tile highlight. A Set of "row,col" strings rather
+    // than tuples since tuples aren't Hashable.
+    private var previewedPositions: Set<String> {
+        Set(previewedWords.flatMap { $0.tiles.map { "\($0.row),\($0.col)" } })
+    }
+
+    // Single-tapping a glowing tile shows what word(s) it's part of and
+    // what tapping double would score, without pausing or otherwise
+    // interrupting play. Re-tapping (or any change to the board's pending
+    // words) resets the auto-dismiss clock / clears a now-stale preview.
+    private func showWordPreview(row: Int, col: Int) {
+        let matches = model.pendingWords(at: row, col: col)
+        guard !matches.isEmpty else { return }
+        presentPreview(matches)
+    }
+
+    // Tapping the "N FOUND" pill previews every currently-pending word at
+    // once — handy specifically for the overlap case (two words sharing a
+    // tile), where a single tile tap only ever shows the word(s) touching
+    // that one cell.
+    private func showAllPendingPreview() {
+        guard !model.pendingWords.isEmpty else { return }
+        presentPreview(model.pendingWords)
+    }
+
+    private func presentPreview(_ words: [WordResult]) {
+        previewDismissTask?.cancel()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            previewedWords = words
+        }
+        let task = DispatchWorkItem {
+            withAnimation(.easeOut(duration: 0.25)) { previewedWords = [] }
+        }
+        previewDismissTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2, execute: task)
+    }
 
     var body: some View {
         ZStack {
@@ -195,6 +238,32 @@ struct PlayingView: View {
         .onChange(of: model.lastWordResult) { _, result in
             if let result = result {
                 triggerWordFlash(result)
+            }
+        }
+        .onChange(of: model.pendingWords) { _, newWords in
+            // markGlowingWords() rescans and reassigns fresh WordResult IDs
+            // on every single tile placement, even when the word being
+            // previewed is still sitting there completely untouched — so
+            // comparing pendingWords by identity/equality would dismiss the
+            // preview within about a second of showing it, almost every
+            // time, since a new tile locks in that often during normal
+            // play. Match by tile position instead: if the exact same
+            // tiles are still glowing, keep showing it (refreshed to the
+            // current WordResult) and let the original auto-dismiss timer
+            // run its course; only clear immediately if those tiles
+            // genuinely aren't part of any pending word anymore.
+            guard !previewedWords.isEmpty else { return }
+            let previewedKeys = Set(previewedWords.map { word in
+                word.tiles.map { "\($0.row),\($0.col)" }.sorted().joined()
+            })
+            let stillPending = newWords.filter { word in
+                previewedKeys.contains(word.tiles.map { "\($0.row),\($0.col)" }.sorted().joined())
+            }
+            if stillPending.isEmpty {
+                previewDismissTask?.cancel()
+                previewedWords = []
+            } else {
+                previewedWords = stillPending
             }
         }
         .onChange(of: model.isWildcard) { _, wild in
@@ -267,16 +336,16 @@ struct PlayingView: View {
             // First-run tutorial tooltip. The opening letters are scripted
             // (see GameModel.startGame()) to guarantee an easy word glows
             // almost immediately, so this only ever has to explain two
-            // things: that dragging steers the piece, and that a glowing
+            // things: that tapping steers the piece, and that a glowing
             // tile needs a double-tap. It disappears for good the moment
             // that first word is cleared.
             if model.isTutorialActive {
                 VStack {
                     HStack(spacing: 10) {
-                        Image(systemName: model.tutorialStep == 0 ? "hand.draw.fill" : "hand.tap.fill")
+                        Image(systemName: "hand.tap.fill")
                             .font(.system(size: 16, weight: .bold))
                         Text(model.tutorialStep == 0 ?
-                             "DRAG LEFT OR RIGHT TO STEER — OR JUST LET IT FALL" :
+                             "TAP LEFT OR RIGHT TO STEER — OR JUST LET IT FALL" :
                              "IT'S GLOWING! DOUBLE-TAP IT TO CLEAR")
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .multilineTextAlignment(.leading)
@@ -338,37 +407,36 @@ struct PlayingView: View {
                         .font(.system(size: 28, weight: .black, design: .monospaced))
                         .foregroundColor(.lexisText)
                         .contentTransition(.numericText())
-                    
+
                     if model.comboCount > 1 {
                         Text("×\(model.comboCount) COMBO!")
                             .font(.system(size: 11, weight: .black, design: .rounded))
                             .foregroundColor(.lexisCombo)
                             .transition(.scale.combined(with: .opacity))
                     }
+
+                    Text("HI \(model.highScore)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.lexisGold)
                 }
-                
+
                 Spacer()
-                
+
                 HStack(spacing: 8) {
-                    // NEXT letter preview + high score, relocated here from
-                    // the controls panel so the bottom of the screen isn't
-                    // permanently spending space on it — the panel now only
-                    // appears when there's an actual power-up to show. This
-                    // shows the UPCOMING piece (a real lookahead), not the
-                    // one currently falling — that's already visible on the
+                    // NEXT letter preview, relocated here from the controls
+                    // panel so the bottom of the screen isn't permanently
+                    // spending space on it — the panel now only appears when
+                    // there's an actual power-up to show. This shows the
+                    // UPCOMING piece (a real lookahead), not the one
+                    // currently falling — that's already visible on the
                     // board, so showing it twice told the player nothing new.
-                    VStack(spacing: 2) {
-                        FallingLetterPreview(
-                            letter: model.upcomingLetter,
-                            isWildcard: model.upcomingIsWildcard,
-                            isBomb: model.upcomingIsBomb,
-                            isDynamite: model.upcomingIsDynamite,
-                            size: 36
-                        )
-                        Text("HI \(model.highScore)")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundColor(.lexisGold)
-                    }
+                    FallingLetterPreview(
+                        letter: model.upcomingLetter,
+                        isWildcard: model.upcomingIsWildcard,
+                        isBomb: model.upcomingIsBomb,
+                        isDynamite: model.upcomingIsDynamite,
+                        size: 36
+                    )
 
                     // A used Peek charge temporarily reveals the 2 letters
                     // after upcomingLetter — small and dimmer, since they're
@@ -502,48 +570,58 @@ struct PlayingView: View {
                         }
                     }
                 }
-                // Primary touch control for moving the falling piece: drag
-                // left/right anywhere on the board to shift columns, or
-                // drag downward to soft-drop (accelerate the fall without
-                // instantly slamming to the bottom — that's still the
-                // double-tap hard drop). Whichever axis dominates a given
-                // drag gesture wins, so a slightly-diagonal swipe doesn't
-                // fight itself.
+                // Slide steering + soft-drop, layered on top of the tap
+                // controls. A horizontal drag flings the piece across
+                // columns fast (tracking the finger, ~0.6 tile per column);
+                // a downward drag soft-drops at a speed that follows the
+                // drag velocity. minimumDistance 16 is high enough that the
+                // small jitter between a double-tap's two taps never trips
+                // the drag, so tap-to-move and double-tap stay reliable.
                 .contentShape(Rectangle())
                 .simultaneousGesture(
-                    DragGesture(minimumDistance: 8)
+                    DragGesture(minimumDistance: 16)
                         .onChanged { value in
-                            let horizontalDominant = abs(value.translation.width) > abs(value.translation.height)
-                            
-                            if horizontalDominant {
+                            if abs(value.translation.width) > abs(value.translation.height) {
                                 if model.isSoftDropping { model.endSoftDrop() }
-                                let columnWidth = tileSize + 2
-                                let threshold = columnWidth * 0.7
-                                let delta = value.translation.width - dragAccumulator
-                                if delta > threshold {
-                                    dragAccumulator += threshold
+                                let step = (tileSize + 2) * 0.6
+                                let delta = value.translation.width - boardDragAccum
+                                if delta >= step {
+                                    boardDragAccum += step
                                     model.moveRight()
-                                } else if delta < -threshold {
-                                    dragAccumulator -= threshold
+                                } else if delta <= -step {
+                                    boardDragAccum -= step
                                     model.moveLeft()
                                 }
                             } else if value.translation.height > 16 {
-                                // A clear, sustained downward drag engages
-                                // soft-drop. Small vertical jitter during a
-                                // horizontal swipe is ignored via the
-                                // horizontalDominant check above. The fall
-                                // speed then tracks the drag's own velocity
-                                // continuously, rather than snapping straight
-                                // to one fixed fast rate.
                                 if !model.isSoftDropping { model.beginSoftDrop() }
                                 model.updateSoftDropSpeed(velocity: value.velocity.height)
                             }
                         }
                         .onEnded { _ in
-                            dragAccumulator = 0
+                            boardDragAccum = 0
                             model.endSoftDrop()
                         }
                 )
+
+                // Bomb explosion burst — pinned to the detonation column via
+                // the same HStack-of-columns layout as the falling-column
+                // indicator, so it lines up exactly with the grid. Keyed by
+                // the blast id so it replays for every detonation.
+                if let blast = model.bombBlast {
+                    HStack(spacing: 2) {
+                        ForEach(0..<GameConstants.cols, id: \.self) { col in
+                            ZStack {
+                                if col == blast.col {
+                                    BombExplosionView(tileSize: tileSize)
+                                }
+                            }
+                            .frame(width: tileSize)
+                        }
+                    }
+                    .frame(height: CGFloat(GameConstants.rows) * (tileSize + 2))
+                    .allowsHitTesting(false)
+                    .id(blast.id)
+                }
 
                 // Floating wildcard picker — a vertical panel pinned to the
                 // board's trailing edge rather than a corner badge, so its
@@ -564,6 +642,21 @@ struct PlayingView: View {
                         }
                     }
                     .padding(.trailing, 8)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+
+                // Word-info preview — a single tap on a glowing tile shows
+                // what it's about to score without touching game state at
+                // all: no pause, no sheet, allowsHitTesting(false) so it
+                // never steals a touch from the board underneath. Purely a
+                // "here's what double-tapping this would do" readout.
+                if !previewedWords.isEmpty {
+                    HStack {
+                        Spacer()
+                        WordPreviewPanel(words: previewedWords)
+                    }
+                    .padding(.trailing, 8)
+                    .allowsHitTesting(false)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
 
@@ -621,6 +714,13 @@ struct PlayingView: View {
                         .background(Color.yellow.opacity(0.15))
                         .clipShape(Capsule())
                         .transition(.scale.combined(with: .opacity))
+                        // Tapping the pill previews every pending word at
+                        // once (word, letters, score) — same non-blocking
+                        // overlay a tile tap shows, but covering the whole
+                        // set rather than just whatever one tile touches.
+                        .onTapGesture {
+                            showAllPendingPreview()
+                        }
                     }
                     ForEach(model.foundWords.prefix(8)) { word in
                         WordChip(result: word)
@@ -790,9 +890,9 @@ struct PlayingView: View {
                 // rather than living inline here, so it never displaces the
                 // Tip picker or control buttons.
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 8)
     }
-    
+
     @ViewBuilder
     private func utilityButtonLabel(icon: String, text: String) -> some View {
         VStack(spacing: 3) {
@@ -822,6 +922,16 @@ struct PlayingView: View {
         return target
     }
     
+    // The letter count of whichever pending word STARTS at this cell, for
+    // a small Scrabble-style badge — lets a player see at a glance how many
+    // tiles a double-tap here will actually clear. A tile can be the start
+    // of more than one glowing word at once (e.g. two words sharing their
+    // first letter); showing the longest is more useful than showing both.
+    func wordStartLength(row: Int, col: Int) -> Int? {
+        let matches = model.pendingWords.filter { $0.tiles.first?.row == row && $0.tiles.first?.col == col }
+        return matches.map { $0.tiles.count }.max()
+    }
+
     // True if this cell holds the topmost (highest, lowest row index) tile
     // in its column — the only tile eligible to be tipped sideways.
     func isTopOfColumn(row: Int, col: Int) -> Bool {
@@ -857,10 +967,19 @@ struct PlayingView: View {
             isHintSource: model.hintTargetCol == col && isTopOfColumn(row: row, col: col),
             colorBlindMode: model.settings.colorBlindMode,
             largeText: model.settings.largeText,
-            tileSize: tileSize
+            tileSize: tileSize,
+            wordStartLength: wordStartLength(row: row, col: col),
+            isPreviewHighlighted: previewedPositions.contains("\(row),\(col)")
         )
-        // Double-tap on a glowing tile confirms a word clear, otherwise it
-        // hard-drops.
+        // Tap controls, arrow-key style: a single tap on the left half of
+        // the board nudges the piece one column left, the right half nudges
+        // it right — mirroring the keyboard's left/right arrows. Tapping a
+        // glowing tile instead previews its word; double-tapping a glowing
+        // tile clears it, and a double-tap anywhere else hard-drops (like the
+        // up arrow). One combined gesture rather than separate
+        // .onTapGesture(count:) modifiers — independent tap-count gestures
+        // race each other unreliably; .exclusively(before:) tries the
+        // double-tap first and falls back to single-tap.
         .gesture(
             TapGesture(count: 2)
                 .onEnded {
@@ -871,6 +990,17 @@ struct PlayingView: View {
                         model.dropFast()
                     }
                 }
+                .exclusively(before: TapGesture(count: 1)
+                    .onEnded {
+                        if model.grid[row][col]?.glowingWordID != nil {
+                            showWordPreview(row: row, col: col)
+                        } else if col < GameConstants.cols / 2 {
+                            model.moveLeft()
+                        } else {
+                            model.moveRight()
+                        }
+                    }
+                )
         )
 
         if isTopOfColumn(row: row, col: col) {
@@ -922,6 +1052,8 @@ struct TileView: View {
     var colorBlindMode: Bool = false
     var largeText: Bool = false
     let tileSize: CGFloat
+    var wordStartLength: Int? = nil
+    var isPreviewHighlighted: Bool = false
 
     @State private var appear = false
     @State private var glowPulse = false
@@ -955,6 +1087,7 @@ struct TileView: View {
             if isBomb || isDynamite { return Color.lexisDanger.opacity(0.5) }
             return isWildcard ? Color.lexisGold.opacity(0.55) : Color.lexisAccent.opacity(0.42)
         }
+        if isPreviewHighlighted { return Color.orange.opacity(glowPulse ? 0.9 : 0.65) }
         if isGlowing { return Color.yellow.opacity(glowPulse ? 0.85 : 0.55) }
         if let tile = tile {
             if tile.isWildcard { return Color.lexisGold.opacity(0.5) }
@@ -971,6 +1104,7 @@ struct TileView: View {
             if isBomb || isDynamite { return Color.lexisDanger.opacity(0.18) }
             return isWildcard ? Color.lexisGold.opacity(0.12) : Color.lexisAccent.opacity(0.08)
         }
+        if isPreviewHighlighted { return Color.orange.opacity(glowPulse ? 0.4 : 0.25) }
         if isGlowing { return Color.yellow.opacity(glowPulse ? 0.35 : 0.2) }
         if let tile = tile {
             if tile.isWildcard { return Color.lexisGold.opacity(0.15) }
@@ -984,6 +1118,7 @@ struct TileView: View {
     
     // Bright edge simulating a light catching the top-left of a raised tile
     private var highlightStrokeColor: Color {
+        if isPreviewHighlighted { return Color.white.opacity(0.85) }
         if isGlowing { return Color.white.opacity(0.7) }
         if isFallingPos { return Color.white.opacity(0.5) }
         if tile != nil { return Color.white.opacity(0.22) }
@@ -1004,6 +1139,7 @@ struct TileView: View {
             if isBomb || isDynamite { return .lexisDanger }
             return isWildcard ? Color.lexisGold : Color.lexisAccent
         }
+        if isPreviewHighlighted { return Color.orange }
         if isGlowing { return Color.yellow }
         if isHintSource { return Color.cyan.opacity(hintPulse ? 0.95 : 0.6) } // "swipe THIS one — it'll reveal a word"
         if isTippable { return Color.purple.opacity(0.6) } // ring: "swipe this sideways to knock it"
@@ -1015,6 +1151,7 @@ struct TileView: View {
     }
 
     var glowColor: Color? {
+        if isPreviewHighlighted { return .orange }
         if isGlowing { return .yellow }
         if isHintSource { return .cyan }
         if isFallingPos && (isBomb || isDynamite) { return .lexisDanger }
@@ -1064,7 +1201,7 @@ struct TileView: View {
                 .strokeBorder(
                     borderColor,
                     style: StrokeStyle(
-                        lineWidth: isFallingPos ? 2 : (isGlowing ? (glowPulse ? 2.6 : 1.8) : (isGhostPos ? 1.2 : 1)),
+                        lineWidth: isFallingPos ? 2 : ((isGlowing || isPreviewHighlighted) ? (glowPulse ? 2.6 : 1.8) : (isGhostPos ? 1.2 : 1)),
                         dash: isGhostPos ? [4, 3] : []
                     )
                 )
@@ -1094,10 +1231,10 @@ struct TileView: View {
                     .font(.system(size: tileSize * (largeText ? 0.6 : 0.52), weight: .black, design: .rounded))
                     .foregroundColor(isFallingPos ?
                         (isWildcard ? .lexisGold : .lexisAccent) :
-                        (isGlowing ? .yellow : (tile?.isWildcard == true ? .lexisGold : .lexisText)))
+                        (isPreviewHighlighted ? .white : (isGlowing ? .yellow : (tile?.isWildcard == true ? .lexisGold : .lexisText))))
                     .shadow(color: .black.opacity(0.4), radius: 0.5, y: 1) // tiny drop shadow on the letter itself, for print-like crispness
-                    .shadow(color: glowColor?.opacity(isGlowing ? 0.9 : 0.6) ?? .clear, radius: isGlowing ? 10 : 6)
-                    .scaleEffect(appear ? (isGlowing && glowPulse ? 1.08 : 1) : 0.3)
+                    .shadow(color: glowColor?.opacity((isGlowing || isPreviewHighlighted) ? 0.9 : 0.6) ?? .clear, radius: (isGlowing || isPreviewHighlighted) ? 10 : 6)
+                    .scaleEffect(appear ? ((isGlowing || isPreviewHighlighted) && glowPulse ? 1.08 : 1) : 0.3)
                     .opacity(appear ? 1 : 0)
                     .minimumScaleFactor(0.6)
             }
@@ -1114,6 +1251,24 @@ struct TileView: View {
                                 .foregroundColor(.lexisGold)
                                 .padding(3)
                         }
+                    }
+                    Spacer()
+                }
+            }
+
+            // Scrabble-style letter-count badge on the tile where a glowing
+            // word starts — a quick "double-tapping here clears N tiles"
+            // read. Top-left, opposite the color-blind marker's top-right
+            // corner so the two never collide.
+            if isGlowing, let count = wordStartLength {
+                VStack {
+                    HStack {
+                        Text("\(count)")
+                            .font(.system(size: tileSize * 0.24, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.6), radius: 1, y: 0.5)
+                            .padding(5)
+                        Spacer()
                     }
                     Spacer()
                 }
@@ -1274,6 +1429,56 @@ struct WordChip: View {
 }
 
 // MARK: - Wildcard Picker
+// MARK: - Word Preview Panel
+// Shown after a single tap on a glowing tile — a non-blocking readout of
+// exactly which word(s) that tile belongs to and what double-tapping it
+// would score. Purely informational: no game state changes, and the
+// board keeps running underneath (the falling piece doesn't pause).
+struct WordPreviewPanel: View {
+    let words: [WordResult]
+
+    private var totalScore: Int { words.reduce(0) { $0 + $1.score } }
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            ForEach(words) { word in
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(word.word.uppercased())
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(.lexisText)
+                    HStack(spacing: 5) {
+                        Text("\(word.tiles.count) LETTERS")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundColor(.lexisMid)
+                        Text("+\(word.score)")
+                            .font(.system(size: 13, weight: .black, design: .monospaced))
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+            if words.count > 1 {
+                Divider().background(Color.white.opacity(0.25))
+                HStack(spacing: 5) {
+                    Text("TOTAL")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.lexisMid)
+                        .tracking(1)
+                    Text("+\(totalScore)")
+                        .font(.system(size: 15, weight: .black, design: .monospaced))
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.lexisBg.opacity(0.94))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.orange.opacity(0.6), lineWidth: 1.5))
+        )
+        .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
+    }
+}
+
 struct FloatingWildcardBadge: View {
     let candidates: [Character]
     @Binding var isExpanded: Bool
@@ -1368,47 +1573,55 @@ struct MenuView: View {
     @State private var showDailyResults = false
     @State private var showLeaderboardScopeDialog = false
     @State private var showDuelSetup = false
-    // Spells the game's own name, not an arbitrary word — each tile falls
-    // in its own column (xOffset) so together they read "LEXIS" left to
-    // right, matching how a real falling piece would land into a word.
-    @State private var demoTiles: [(letter: String, xOffset: CGFloat, delay: Double)] = [
-        ("L", -84, 0), ("E", -42, 0.15), ("X", 0, 0.3), ("I", 42, 0.45), ("S", 84, 0.6)
+    // Measured frame of the "LEXIS" wordmark (in the "menu" coordinate
+    // space) — the falling-tile rain starts from here so each letter looks
+    // like it drops straight out of the title.
+    @State private var logoFrame: CGRect = .zero
+    // Spells the game's own name — the letters read "LEXIS" left to right.
+    // Each tile's column is placed under its matching wordmark letter (see
+    // the rain layer), so together they pour out of the logo in order.
+    @State private var demoTiles: [(letter: String, delay: Double)] = [
+        ("L", 0), ("E", 0.15), ("X", 0.3), ("I", 0.45), ("S", 0.6)
     ]
-    
+
     var body: some View {
         ZStack {
             // Falling-letter rain spelling LEXIS, as a background layer
-            // behind the menu content rather than a boxed-in inline element.
-            // Previously it sat inline between the logo and the how-to-play
-            // card and visibly overlapped the subtitle text; starting it
-            // below that text and letting it fall toward the bottom of the
-            // screen keeps it feeling like ambient background motion rather
-            // than something colliding with the UI on top of it.
+            // behind the menu content. It begins at the measured "LEXIS"
+            // wordmark and each tile falls down the column beneath its own
+            // letter in the title, so the effect reads as the logo shedding
+            // its letters rather than an unrelated rain starting in blank
+            // space below it.
             GeometryReader { geo in
-                ZStack {
-                    ForEach(0..<demoTiles.count, id: \.self) { i in
-                        DemoTile(
-                            letter: demoTiles[i].letter,
-                            xOffset: demoTiles[i].xOffset,
-                            delay: demoTiles[i].delay,
-                            startY: 0,
-                            endY: geo.size.height - menuHeaderClearance
-                        )
+                if logoFrame != .zero {
+                    ZStack {
+                        ForEach(0..<demoTiles.count, id: \.self) { i in
+                            // Center of this letter within the wordmark:
+                            // evenly spaced across the measured logo width.
+                            let frac = (CGFloat(i) + 0.5) / CGFloat(demoTiles.count)
+                            let letterX = logoFrame.minX + logoFrame.width * frac
+                            DemoTile(
+                                letter: demoTiles[i].letter,
+                                xOffset: letterX - geo.size.width / 2,
+                                delay: demoTiles[i].delay,
+                                startY: logoFrame.maxY - 8,
+                                endY: geo.size.height + 40
+                            )
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    // Rebuild the tiles if the logo ever re-measures (e.g.
+                    // rotation) so their startY tracks the new position.
+                    .id(logoFrame.maxY)
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
-                .padding(.top, menuHeaderClearance)
             }
             .allowsHitTesting(false)
 
             menuContent
         }
+        .coordinateSpace(name: "menu")
+        .onPreferenceChange(TitleFramePreferenceKey.self) { logoFrame = $0 }
     }
-
-    // Clears the top icon row + logo + subtitle before the falling tiles
-    // start, so they never overlap that text. Empirically sized rather than
-    // measured exactly — revisit if the logo block's height changes.
-    private let menuHeaderClearance: CGFloat = 260
 
     private var menuContent: some View {
         VStack(spacing: 0) {
@@ -1465,6 +1678,17 @@ struct MenuView: View {
                     .tracking(12)
                     .shadow(color: Color.lexisAccent.opacity(logoGlow ? 0.8 : 0.3), radius: logoGlow ? 24 : 8)
                     .scaleEffect(logoScale)
+                    // Report the wordmark's on-screen frame so the falling
+                    // rain can start exactly here. Measured at scaleEffect 1
+                    // (natural size) via the unscaled background layer.
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: TitleFramePreferenceKey.self,
+                                value: proxy.frame(in: .named("menu"))
+                            )
+                        }
+                    )
                 
                 Text("ONE LETTER · ONE WORD · ONE LIFE")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -1484,8 +1708,8 @@ struct MenuView: View {
 
             // How to play
             VStack(alignment: .leading, spacing: 12) {
-                HowToRow(icon: "arrow.left.arrow.right", text: "Steer each falling letter left & right")
-                HowToRow(icon: "hand.tap", text: "Tap a tile to clear words — any direction")
+                HowToRow(icon: "arrow.left.arrow.right", text: "Tap the left or right of the board to steer — or slide to fling")
+                HowToRow(icon: "hand.tap", text: "Double-tap a glowing tile to clear its word — any direction")
                 HowToRow(icon: "star.fill", color: .lexisGold, text: "Golden blocks = wildcards. Pick any letter!")
                 HowToRow(icon: "arrow.up.right.and.arrow.down.left", text: "Chain words for massive combo scores")
             }
@@ -1611,79 +1835,19 @@ struct MenuView: View {
             // High score hero — the best score achieved across ANY
             // difficulty, shown prominently rather than buried as small
             // text, since "what's my best ever" is the first thing a
-            // returning player wants to see.
+            // returning player wants to see. Shared with GameOverView so
+            // "your best" reads identically on both screens.
             if let topEntry = settings.allTimeScores().first {
-                VStack(spacing: 2) {
-                    Text("ALL-TIME BEST")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundColor(.lexisMid)
-                        .tracking(3)
-                    HStack(spacing: 8) {
-                        Image(systemName: "trophy.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.lexisGold)
-                        Text("\(topEntry.score)")
-                            .font(.system(size: 34, weight: .black, design: .monospaced))
-                            .foregroundColor(.lexisGold)
-                    }
-                    Text(topEntry.difficulty.rawValue.uppercased())
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.lexisMid)
-                }
-                .padding(.bottom, 16)
-                .transition(.opacity)
+                AllTimeBestHero(score: topEntry.score, difficulty: topEntry.difficulty)
+                    .padding(.bottom, 16)
+                    .transition(.opacity)
             }
             
             // All difficulty levels visible at a glance — tap any card to
-            // select it directly, rather than hiding the other three
-            // behind a single chip that only shows the current pick.
-            VStack(alignment: .leading, spacing: 8) {
-                Text("SELECT DIFFICULTY")
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundColor(.lexisMid)
-                    .tracking(2)
-                    .padding(.horizontal, 24)
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(Difficulty.allCases) { diff in
-                            let isSelected = settings.difficulty == diff
-                            let best = settings.highScore(for: diff)
-                            
-                            Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    settings.difficulty = diff
-                                }
-                                Haptics.light()
-                            } label: {
-                                VStack(spacing: 6) {
-                                    Image(systemName: diff.icon)
-                                        .font(.system(size: 16, weight: .bold))
-                                    Text(diff.rawValue.uppercased())
-                                        .font(.system(size: 11, weight: .black, design: .rounded))
-                                        .tracking(0.5)
-                                    Text(best > 0 ? "\(best)" : "—")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                        .opacity(0.7)
-                                }
-                                .foregroundColor(isSelected ? Color.lexisBg : .lexisMid)
-                                .frame(width: 76, height: 76)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(isSelected ? Color.lexisAccent : Color.lexisBlock.opacity(0.7))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 14)
-                                                .strokeBorder(isSelected ? Color.clear : Color.lexisBlockBorder.opacity(0.3), lineWidth: 1)
-                                        )
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                }
-            }
-            .padding(.bottom, 20)
-            
+            // select it directly. Shared with the Game Over screen.
+            DifficultyCardsRow()
+                .padding(.bottom, 20)
+
             // Start button — unlimited endless mode
             Button {
                 withAnimation(.spring()) {
@@ -1714,6 +1878,19 @@ struct MenuView: View {
     }
 }
 
+// Carries the measured frame of a title wordmark (the menu's "LEXIS" logo,
+// or Game Over's "GAME OVER") up to the view that draws the falling-tile
+// rain, so the rain can begin exactly at the wordmark rather than at a
+// hardcoded clearance below it — the letters appear to pour out of the
+// title itself.
+struct TitleFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
 struct DemoTile: View {
     let letter: String
     let xOffset: CGFloat
@@ -1738,28 +1915,66 @@ struct DemoTile: View {
         self._yPos = State(initialValue: startY)
     }
 
+    // Mirrors TileView's "falling piece" bevel treatment (gradient fill,
+    // bright top-left / dark bottom-right bevel strokes, drop shadow, inner
+    // sheen) so the menu's and Game Over's decorative letter rain reads as
+    // the same chunky, tactile tile a player sees during actual play,
+    // rather than a flatter one-off look.
     var body: some View {
-        Text(letter)
-            .font(.system(size: tileSize * 0.6, weight: .black, design: .rounded))
-            .foregroundColor(color)
-            .frame(width: tileSize, height: tileSize)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(color.opacity(0.12))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(color.opacity(0.4), lineWidth: 1))
-            )
-            .offset(x: xOffset, y: yPos)
-            .onAppear {
-                let travel = Double(endY - startY)
-                let duration = max(0.4, 1.2 * travel / 100)
-                withAnimation(
-                    Animation.easeIn(duration: duration)
-                        .delay(delay)
-                        .repeatForever(autoreverses: false)
-                ) {
-                    yPos = endY
-                }
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.black.opacity(0.35))
+                .offset(y: 2)
+                .blur(radius: 3)
+
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    LinearGradient(
+                        colors: [color.opacity(0.5), color.opacity(0.1)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.black.opacity(0.35), lineWidth: 1.5)
+                .offset(x: 0.5, y: 0.5)
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.white.opacity(0.45), lineWidth: 1.5)
+                .offset(x: -0.5, y: -0.5)
+
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(color, lineWidth: 1.5)
+
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.14), Color.white.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+                .padding(2)
+
+            Text(letter)
+                .font(.system(size: tileSize * 0.55, weight: .black, design: .rounded))
+                .foregroundColor(color)
+                .shadow(color: .black.opacity(0.4), radius: 0.5, y: 1)
+                .shadow(color: color.opacity(0.6), radius: 6)
+        }
+        .frame(width: tileSize, height: tileSize)
+        .offset(x: xOffset, y: yPos)
+        .onAppear {
+            let travel = Double(endY - startY)
+            let duration = max(0.4, 1.2 * travel / 100)
+            withAnimation(
+                Animation.easeIn(duration: duration)
+                    .delay(delay)
+                    .repeatForever(autoreverses: false)
+            ) {
+                yPos = endY
             }
+        }
     }
 }
 
@@ -1791,13 +2006,17 @@ struct GameOverView: View {
     @State private var showLeaderboard = false
     @State private var showShareSheet = false
     @State private var titleGlow = false
+    // Measured frame of the "GAME OVER" title — the falling tiles start
+    // from here, so the letters look like they spill out of the headline.
+    @State private var titleFrame: CGRect = .zero
 
     // Same falling-tile mechanic as the menu's LEXIS demo, spelling "GAME
-    // OVER" instead — aligns the two bookend screens visually rather than
-    // this one just being a plain static text dump.
-    private let demoTiles: [(letter: String, xOffset: CGFloat, delay: Double)] = [
-        ("G", -133, 0), ("A", -95, 0.1), ("M", -57, 0.2), ("E", -19, 0.3),
-        ("O", 19, 0.4), ("V", 57, 0.5), ("E", 95, 0.6), ("R", 133, 0.7)
+    // OVER" — aligns the two bookend screens visually. Each tile's column
+    // is placed under its matching letter in the title (see the rain
+    // layer), so they pour out of the headline in order.
+    private let demoTiles: [(letter: String, delay: Double)] = [
+        ("G", 0), ("A", 0.1), ("M", 0.2), ("E", 0.3),
+        ("O", 0.4), ("V", 0.5), ("E", 0.6), ("R", 0.7)
     ]
 
     // True if this run's score placed in the persisted all-time top 10 —
@@ -1808,44 +2027,66 @@ struct GameOverView: View {
         guard !all.isEmpty else { return model.score > 0 }
         return model.score >= (all.map { $0.score }.min() ?? 0) || all.count < 10
     }
-    
+
     var body: some View {
-        ZStack {
-            Color.lexisBg.opacity(0.92).ignoresSafeArea()
-            
-            VStack(spacing: 24) {
+        GeometryReader { geo in
+            ZStack {
+                Color.lexisBg.opacity(0.92).ignoresSafeArea()
+
+                // Falling-tile rain spelling "GAME OVER," as an ambient
+                // background layer behind all the score/button content. It
+                // begins at the measured "GAME OVER" title and each tile
+                // falls the full screen height beneath its own letter, so
+                // the headline appears to shed its letters.
+                if titleFrame != .zero {
+                    ZStack {
+                        ForEach(0..<demoTiles.count, id: \.self) { i in
+                            let frac = (CGFloat(i) + 0.5) / CGFloat(demoTiles.count)
+                            let letterX = titleFrame.minX + titleFrame.width * frac
+                            DemoTile(
+                                letter: demoTiles[i].letter,
+                                xOffset: letterX - geo.size.width / 2,
+                                delay: demoTiles[i].delay,
+                                tileSize: 30,
+                                color: .lexisDanger,
+                                startY: titleFrame.maxY - 6,
+                                endY: geo.size.height + 40
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .id(titleFrame.maxY)
+                    .allowsHitTesting(false)
+                }
+
+                ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 18) {
                 // Game over text — same glowing-pulse treatment as the
-                // menu's LEXIS logo (just red instead of mint), plus the
-                // falling-tile demo re-spelling "GAME OVER" beneath it.
+                // menu's LEXIS logo (just red instead of mint).
                 VStack(spacing: 4) {
                     Text("GAME OVER")
                         .font(.system(size: 42, weight: .black, design: .rounded))
                         .foregroundColor(.lexisDanger)
                         .tracking(4)
                         .shadow(color: Color.lexisDanger.opacity(titleGlow ? 0.8 : 0.3), radius: titleGlow ? 24 : 8)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: TitleFramePreferenceKey.self,
+                                    value: proxy.frame(in: .named("gameover"))
+                                )
+                            }
+                        )
 
                     Text("your words ran out")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.lexisMid)
-
-                    ZStack {
-                        ForEach(0..<demoTiles.count, id: \.self) { i in
-                            DemoTile(
-                                letter: demoTiles[i].letter,
-                                xOffset: demoTiles[i].xOffset,
-                                delay: demoTiles[i].delay,
-                                tileSize: 30,
-                                color: .lexisDanger
-                            )
+                        .padding(.top, 8)
+                        .onAppear {
+                            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                                titleGlow = true
+                            }
                         }
-                    }
-                    .frame(height: 60)
-                    .padding(.top, 8)
-                    .onAppear {
-                        withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                            titleGlow = true
-                        }
-                    }
 
                     if madeTopScores && model.score > 0 {
                         HStack(spacing: 6) {
@@ -1861,8 +2102,11 @@ struct GameOverView: View {
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
-                
-                // Score cards
+
+                // Score cards — this run's SCORE plus BEST/LEVEL context.
+                // (The all-time-best hero that briefly lived here was
+                // redundant: BEST already shows it, and the difficulty
+                // cards below show each pace's best.)
                 HStack(spacing: 16) {
                     ScoreCard(label: "SCORE", value: "\(model.score)", color: .lexisAccent)
                     ScoreCard(label: "BEST", value: "\(model.highScore)", color: .lexisGold)
@@ -1889,96 +2133,95 @@ struct GameOverView: View {
                     .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
                 }
                 
+                // Difficulty picker — the exact same cards as the main menu,
+                // so a player can switch pace before replaying without
+                // bouncing back to the menu. Negative horizontal padding
+                // lets the scroll row bleed to the screen edge like the menu
+                // does, despite this content's 24pt inset.
+                DifficultyCardsRow()
+                    .padding(.horizontal, -24)
+
                 // Buttons
                 VStack(spacing: 12) {
+                    // PLAY AGAIN gets the same prominent treatment as the
+                    // menu's PLAY ENDLESS — big, glowing, unmistakably the
+                    // primary action — and launches straight into whatever
+                    // difficulty the cards above have selected.
                     Button {
                         withAnimation(.spring()) { model.startGame() }
                     } label: {
                         Text("PLAY AGAIN")
-                            .font(.system(size: 18, weight: .black, design: .rounded))
+                            .font(.system(size: 20, weight: .black, design: .rounded))
                             .foregroundColor(Color.lexisBg)
-                            .tracking(3)
+                            .tracking(4)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisAccent))
-                    }
-                    
-                    Button {
-                        showLeaderboard = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "trophy.fill")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("TOP SCORES")
-                                .font(.system(size: 15, weight: .black, design: .rounded))
-                                .tracking(2)
-                        }
-                        .foregroundColor(.lexisGold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.lexisGold.opacity(0.1))
-                                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisGold.opacity(0.35), lineWidth: 1.5))
-                        )
-                    }
-
-                    // Every mode's best moments should be exportable, not
-                    // just Daily Challenge — that used to be the only mode
-                    // with any share affordance at all.
-                    Button {
-                        showShareSheet = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("SHARE RESULT")
-                                .font(.system(size: 15, weight: .black, design: .rounded))
-                                .tracking(2)
-                        }
-                        .foregroundColor(.lexisAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.lexisAccent.opacity(0.1))
-                                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisAccent.opacity(0.35), lineWidth: 1.5))
-                        )
+                            .padding(.vertical, 18)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.lexisAccent)
+                                    .shadow(color: Color.lexisAccent.opacity(0.4), radius: 16, y: 6)
+                            )
                     }
 
                     HStack(spacing: 12) {
                         Button {
-                            model.phase = .menu
-                            showDifficultySelect = true
+                            showLeaderboard = true
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: "slider.horizontal.3")
+                                Image(systemName: "trophy.fill")
                                     .font(.system(size: 13, weight: .bold))
-                                Text("DIFFICULTY")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                Text("TOP SCORES")
+                                    .font(.system(size: 13, weight: .black, design: .rounded))
                                     .tracking(1)
                             }
+                            .foregroundColor(.lexisGold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.lexisGold.opacity(0.1))
+                                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisGold.opacity(0.35), lineWidth: 1.5))
+                            )
+                        }
+
+                        // Every mode's best moments should be exportable,
+                        // not just Daily Challenge.
+                        Button {
+                            showShareSheet = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("SHARE")
+                                    .font(.system(size: 13, weight: .black, design: .rounded))
+                                    .tracking(1)
+                            }
+                            .foregroundColor(.lexisAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.lexisAccent.opacity(0.1))
+                                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.lexisAccent.opacity(0.35), lineWidth: 1.5))
+                            )
+                        }
+                    }
+
+                    Button {
+                        withAnimation(.spring()) { model.phase = .menu }
+                    } label: {
+                        Text("MAIN MENU")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .tracking(1)
                             .foregroundColor(.lexisMid)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock))
-                        }
-                        
-                        Button {
-                            withAnimation(.spring()) { model.phase = .menu }
-                        } label: {
-                            Text("MAIN MENU")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .tracking(1)
-                                .foregroundColor(.lexisMid)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock))
-                        }
                     }
                 }
+                .padding(24)
+                }
             }
-            .padding(24)
             .scaleEffect(scale)
             .opacity(opacity)
             .onAppear {
@@ -1993,6 +2236,95 @@ struct GameOverView: View {
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [model.endlessShareText()])
+        }
+        .coordinateSpace(name: "gameover")
+        .onPreferenceChange(TitleFramePreferenceKey.self) { titleFrame = $0 }
+        }
+    }
+}
+
+// MARK: - Difficulty Cards Row
+// The horizontally-scrolling difficulty picker — shared between MenuView
+// and GameOverView so choosing a pace looks and behaves identically on
+// both screens (tap a card to select it; its per-difficulty best shows
+// underneath).
+struct DifficultyCardsRow: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("SELECT DIFFICULTY")
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundColor(.lexisMid)
+                .tracking(2)
+                .padding(.horizontal, 24)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Difficulty.allCases) { diff in
+                        let isSelected = settings.difficulty == diff
+                        let best = settings.highScore(for: diff)
+
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                settings.difficulty = diff
+                            }
+                            Haptics.light()
+                        } label: {
+                            VStack(spacing: 6) {
+                                Image(systemName: diff.icon)
+                                    .font(.system(size: 16, weight: .bold))
+                                Text(diff.rawValue.uppercased())
+                                    .font(.system(size: 11, weight: .black, design: .rounded))
+                                    .tracking(0.5)
+                                Text(best > 0 ? "\(best)" : "—")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .opacity(0.7)
+                            }
+                            .foregroundColor(isSelected ? Color.lexisBg : .lexisMid)
+                            .frame(width: 76, height: 76)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(isSelected ? Color.lexisAccent : Color.lexisBlock.opacity(0.7))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .strokeBorder(isSelected ? Color.clear : Color.lexisBlockBorder.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+        }
+    }
+}
+
+// MARK: - All-Time Best Hero
+// The "what's my best ever" display — shared between MenuView and
+// GameOverView so a player's all-time high score reads identically no
+// matter which screen they're looking at it from.
+struct AllTimeBestHero: View {
+    let score: Int
+    let difficulty: Difficulty
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("ALL-TIME BEST")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundColor(.lexisMid)
+                .tracking(3)
+            HStack(spacing: 8) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.lexisGold)
+                Text("\(score)")
+                    .font(.system(size: 34, weight: .black, design: .monospaced))
+                    .foregroundColor(.lexisGold)
+            }
+            Text(difficulty.rawValue.uppercased())
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.lexisMid)
         }
     }
 }
@@ -2043,6 +2375,63 @@ struct ParticleEffect: Identifiable {
     var position: CGPoint
     var color: Color
     var opacity: Double = 1
+}
+
+// MARK: - Bomb Explosion
+// A one-shot burst played when a bomb detonates: a white-hot core flash, an
+// expanding shockwave ring, and a ring of shrapnel flung radially outward.
+// Draws beyond its column frame on purpose (no clipping) so the blast reads
+// as bigger than a single tile. Self-animating on appear; the model clears
+// the blast marker ~0.85s later, removing this view.
+struct BombExplosionView: View {
+    let tileSize: CGFloat
+    @State private var animate = false
+
+    private let shardCount = 12
+
+    var body: some View {
+        ZStack {
+            // Shockwave ring
+            Circle()
+                .stroke(Color.lexisDanger, lineWidth: animate ? 1 : 5)
+                .frame(width: tileSize * 1.3, height: tileSize * 1.3)
+                .scaleEffect(animate ? 3.4 : 0.3)
+                .opacity(animate ? 0 : 0.9)
+
+            // White-hot core flash fading through gold to red
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [.white, .lexisGold, Color.lexisDanger.opacity(0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: tileSize
+                    )
+                )
+                .frame(width: tileSize * 2.2, height: tileSize * 2.2)
+                .scaleEffect(animate ? 1.7 : 0.2)
+                .opacity(animate ? 0 : 1)
+
+            // Shrapnel flung outward
+            ForEach(0..<shardCount, id: \.self) { i in
+                let angle = (Double(i) / Double(shardCount)) * 2 * .pi
+                Circle()
+                    .fill(i.isMultiple(of: 2) ? Color.lexisGold : Color.lexisDanger)
+                    .frame(width: tileSize * 0.26, height: tileSize * 0.26)
+                    .offset(
+                        x: animate ? CGFloat(cos(angle)) * tileSize * 2.6 : 0,
+                        y: animate ? CGFloat(sin(angle)) * tileSize * 2.6 : 0
+                    )
+                    .opacity(animate ? 0 : 1)
+                    .scaleEffect(animate ? 0.4 : 1)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                animate = true
+            }
+        }
+    }
 }
 
 // MARK: - Daily Result View

@@ -125,4 +125,12 @@ enum SoundManager {
     static func gameOver() {
         play(chirp(from: 392, to: 196, duration: 0.5, volume: 0.22))
     }
+
+    /// Bomb detonation — a low, fast downward boom layered under a short
+    /// noisy crack, louder than the ordinary power-up chime so it lands as
+    /// a genuinely explosive moment.
+    static func explosion() {
+        play(chirp(from: 240, to: 45, duration: 0.45, volume: 0.34))
+        play(tone(frequency: 70, duration: 0.16, volume: 0.30))
+    }
 }

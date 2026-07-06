@@ -205,8 +205,8 @@ struct GuideView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader(title: "MOVING & DROPPING")
                             VStack(alignment: .leading, spacing: 16) {
-                                HowToRow(icon: "hand.draw.fill", text: "Drag left or right anywhere on the board to steer the falling letter")
-                                HowToRow(icon: "arrow.down.to.line", text: "Drag down to speed up the fall, or double-tap the board to drop instantly")
+                                HowToRow(icon: "hand.tap.fill", text: "Tap the left or right side of the board to move one column that way — or slide across to fling it fast")
+                                HowToRow(icon: "arrow.down.to.line", text: "Drag down to speed up the fall, or double-tap to drop instantly")
                             }
                             .padding(16)
                             .frame(maxWidth: .infinity, alignment: .leading)
