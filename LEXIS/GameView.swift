@@ -185,6 +185,9 @@ struct PlayingView: View {
     // this gesture — lets a continuous slide across the board step the piece
     // column by column as the finger travels, then resets on release.
     @State private var boardDragAccum: CGFloat = 0
+    // Short-lived shard bursts, one per tile of a just-cleared word, so a
+    // clear reads as the tiles bursting apart rather than blinking out.
+    @State private var shardBursts: [ClearShardBurst] = []
     @FocusState private var boardFocused: Bool
 
     // Combo crescendo: the chain gets louder as it climbs — warmer color and
@@ -288,6 +291,7 @@ struct PlayingView: View {
         .onChange(of: model.lastWordResult) { _, result in
             if let result = result {
                 triggerWordFlash(result)
+                spawnShatter(for: result)
             }
         }
         .onChange(of: model.pendingWords) { _, newWords in
@@ -679,6 +683,27 @@ struct PlayingView: View {
                     .id(blast.id)
                 }
 
+                // Tile-shatter bursts — one per cleared tile, positioned at
+                // that tile's cell center (same step as the grid) so the
+                // shards fly out of exactly where the letters were.
+                if !shardBursts.isEmpty {
+                    ZStack(alignment: .topLeading) {
+                        ForEach(shardBursts) { burst in
+                            ClearShardView(tileSize: tileSize, color: burst.color)
+                                .position(
+                                    x: CGFloat(burst.col) * (tileSize + 2) + tileSize / 2,
+                                    y: CGFloat(burst.row) * (tileSize + 2) + tileSize / 2
+                                )
+                        }
+                    }
+                    .frame(
+                        width: CGFloat(GameConstants.cols) * tileSize + CGFloat(GameConstants.cols - 1) * 2,
+                        height: CGFloat(GameConstants.rows) * (tileSize + 2),
+                        alignment: .topLeading
+                    )
+                    .allowsHitTesting(false)
+                }
+
                 // Floating wildcard picker — a vertical panel pinned to the
                 // board's trailing edge rather than a corner badge, so its
                 // candidates have more room to be tapped accurately. This
@@ -1036,7 +1061,8 @@ struct PlayingView: View {
             largeText: model.settings.largeText,
             tileSize: tileSize,
             wordStartLength: wordStartLength(row: row, col: col),
-            isPreviewHighlighted: previewedPositions.contains("\(row),\(col)")
+            isPreviewHighlighted: previewedPositions.contains("\(row),\(col)"),
+            justLanded: model.lastLandedCell == GridPos(row: row, col: col)
         )
         // Tap controls, arrow-key style: a single tap on the left half of
         // the board nudges the piece one column left, the right half nudges
@@ -1086,6 +1112,20 @@ struct PlayingView: View {
         }
     }
 
+    // Spawns one shard burst per tile of the cleared word, at that tile's
+    // board position, and clears them after the animation. Additive only —
+    // the model still removes the tiles on its own schedule; this just plays
+    // over the top so the clear feels physical.
+    func spawnShatter(for result: WordResult) {
+        let color: Color = result.isChain ? .lexisCombo : (result.word.count >= 6 ? .lexisGold : .yellow)
+        let bursts = result.tiles.map { ClearShardBurst(row: $0.row, col: $0.col, color: color) }
+        shardBursts.append(contentsOf: bursts)
+        let ids = Set(bursts.map { $0.id })
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            shardBursts.removeAll { ids.contains($0.id) }
+        }
+    }
+
     func triggerWordFlash(_ result: WordResult) {
         wordFlashText = result.word.uppercased()
         wordFlashScore = result.score
@@ -1129,10 +1169,12 @@ struct TileView: View {
     let tileSize: CGFloat
     var wordStartLength: Int? = nil
     var isPreviewHighlighted: Bool = false
+    var justLanded: Bool = false
 
     @State private var appear = false
     @State private var glowPulse = false
     @State private var hintPulse = false
+    @State private var landSquash = false
     
     private var isGlowing: Bool {
         !isFallingPos && tile?.glowingWordID != nil
@@ -1350,6 +1392,11 @@ struct TileView: View {
             }
         }
         .frame(width: tileSize, height: tileSize)
+        // Impact squash — the freshly-dropped tile compresses on landing and
+        // springs back to full height, so a placement lands with weight
+        // instead of just appearing. Anchored to the bottom so it squashes
+        // "onto" the surface below it.
+        .scaleEffect(x: landSquash ? 1.12 : 1.0, y: landSquash ? 0.78 : 1.0, anchor: .bottom)
         .onAppear {
             if tile != nil {
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
@@ -1360,6 +1407,13 @@ struct TileView: View {
             }
             if isGlowing { startGlowPulse() }
             if isHintSource { startHintPulse() }
+        }
+        .onChange(of: justLanded) { _, landed in
+            guard landed else { return }
+            landSquash = true
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.45)) {
+                landSquash = false
+            }
         }
         .onChange(of: isGlowing) { _, glowing in
             if glowing {
@@ -2414,6 +2468,55 @@ struct ParticleEffect: Identifiable {
 // Draws beyond its column frame on purpose (no clipping) so the blast reads
 // as bigger than a single tile. Self-animating on appear; the model clears
 // the blast marker ~0.85s later, removing this view.
+// One tile's-worth of shatter: a marker the view spawns at a cleared tile.
+struct ClearShardBurst: Identifiable {
+    let id = UUID()
+    let row: Int
+    let col: Int
+    let color: Color
+}
+
+// A quick shard burst played where a tile was cleared: a bright flash plus a
+// handful of shards flung outward and fading. Smaller and faster than the
+// bomb blast — this fires many at once (one per cleared tile), so it stays
+// light. Draws beyond its cell bounds on purpose (no clip).
+struct ClearShardView: View {
+    let tileSize: CGFloat
+    let color: Color
+    @State private var go = false
+
+    private let shards = 6
+
+    var body: some View {
+        ZStack {
+            // Core flash
+            Circle()
+                .fill(color)
+                .frame(width: tileSize * 0.9, height: tileSize * 0.9)
+                .scaleEffect(go ? 1.3 : 0.4)
+                .opacity(go ? 0 : 0.9)
+
+            // Shards
+            ForEach(0..<shards, id: \.self) { i in
+                let angle = (Double(i) / Double(shards)) * 2 * .pi + 0.4
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(color)
+                    .frame(width: tileSize * 0.2, height: tileSize * 0.2)
+                    .offset(
+                        x: go ? CGFloat(cos(angle)) * tileSize * 1.15 : 0,
+                        y: go ? CGFloat(sin(angle)) * tileSize * 1.15 : 0
+                    )
+                    .rotationEffect(.degrees(go ? 140 : 0))
+                    .opacity(go ? 0 : 1)
+                    .scaleEffect(go ? 0.4 : 1)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.55)) { go = true }
+        }
+    }
+}
+
 struct BombExplosionView: View {
     let tileSize: CGFloat
     @State private var animate = false

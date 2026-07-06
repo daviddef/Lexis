@@ -22,6 +22,13 @@ struct LetterTile: Identifiable, Equatable {
     }
 }
 
+// A board coordinate. Small Equatable value so the view can observe "which
+// cell just took an impact" via onChange.
+struct GridPos: Equatable {
+    let row: Int
+    let col: Int
+}
+
 // MARK: - Word Result
 struct WordResult: Identifiable, Equatable {
     let id = UUID()
@@ -404,6 +411,10 @@ class GameModel: ObservableObject {
     @Published var blocksDropped: Int = 0
     @Published var foundWords: [WordResult] = []
     @Published var shakeBoard: Bool = false
+    // The cell a player-dropped piece just locked into — the view squashes
+    // that one tile on impact. Only set for real landings (not gravity
+    // settles), so the "thunk" reads as the piece you just placed.
+    @Published var lastLandedCell: GridPos? = nil
     // Non-nil for ~0.8s right after a bomb detonates, so the view can play a
     // one-shot explosion burst at the detonation column. Carries a fresh id
     // each time so back-to-back bombs each re-trigger the animation.
@@ -1162,6 +1173,7 @@ class GameModel: ObservableObject {
             age: blocksDropped
         )
         grid[fallingRow][fallingCol] = tile
+        lastLandedCell = GridPos(row: fallingRow, col: fallingCol) // squash this tile on impact
         Haptics.tileLand() // a subtle tick every time a piece settles, for rhythm
         SoundManager.tileLand()
 
