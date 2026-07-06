@@ -110,6 +110,25 @@ struct GameView: View {
                     }
                     .onDisappear { dangerVignettePulse = false }
                 }
+
+                // High-combo edge glow — from a x4 chain up, the screen edges
+                // ring in the combo color (gold, then hot red past x5),
+                // deepening with the count, so a big chain is felt at the
+                // periphery, not just read in the header.
+                if (model.phase == .playing || model.phase == .paused) && model.comboCount >= 4 {
+                    let hot = model.comboCount >= 5
+                    RadialGradient(
+                        colors: [Color.clear, (hot ? Color.lexisDanger : Color.lexisGold)
+                            .opacity(min(0.34, 0.12 + Double(model.comboCount - 4) * 0.05))],
+                        center: .center,
+                        startRadius: geo.size.width * 0.45,
+                        endRadius: geo.size.width * 0.95
+                    )
+                    .allowsHitTesting(false)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .animation(.easeOut(duration: 0.25), value: model.comboCount)
+                }
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView { _ in
@@ -167,6 +186,20 @@ struct PlayingView: View {
     // column by column as the finger travels, then resets on release.
     @State private var boardDragAccum: CGFloat = 0
     @FocusState private var boardFocused: Bool
+
+    // Combo crescendo: the chain gets louder as it climbs — warmer color and
+    // a larger label — so higher combos feel meaningfully hotter, not just a
+    // bigger number.
+    private var comboColor: Color {
+        switch model.comboCount {
+        case ..<3: return .lexisCombo   // orange
+        case 3..<5: return .lexisGold   // gold
+        default: return .lexisDanger    // hot red at 5+
+        }
+    }
+    private var comboFontSize: CGFloat {
+        min(20, 11 + CGFloat(max(0, model.comboCount - 1)) * 1.5)
+    }
 
     // Every board position covered by the currently-previewed word(s), for
     // the bright-orange tile highlight. A Set of "row,col" strings rather
@@ -426,10 +459,16 @@ struct PlayingView: View {
                         .contentTransition(.numericText())
 
                     if model.comboCount > 1 {
+                        // Escalates with the chain: bigger, and shifting
+                        // orange → gold → hot red as it climbs, with a fresh
+                        // scale-pop on every increment (via .id) so a ×6
+                        // reads unmistakably hotter than a ×2.
                         Text("×\(model.comboCount) COMBO!")
-                            .font(.system(size: 11, weight: .black, design: .rounded))
-                            .foregroundColor(.lexisCombo)
-                            .transition(.scale.combined(with: .opacity))
+                            .font(.system(size: comboFontSize, weight: .black, design: .rounded))
+                            .foregroundColor(comboColor)
+                            .shadow(color: comboColor.opacity(0.8), radius: model.comboCount >= 4 ? 10 : 0)
+                            .id(model.comboCount)
+                            .transition(.scale(scale: 1.4).combined(with: .opacity))
                     }
 
                     Text("HI \(model.highScore)")
