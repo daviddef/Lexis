@@ -23,7 +23,7 @@ struct LetterTile: Identifiable, Equatable {
 }
 
 // MARK: - Word Result
-struct WordResult: Identifiable {
+struct WordResult: Identifiable, Equatable {
     let id = UUID()
     let word: String
     let tiles: [LetterTile]

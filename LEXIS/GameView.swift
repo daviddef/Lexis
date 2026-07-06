@@ -25,15 +25,14 @@ struct GameView: View {
     @State private var showSettings = false
     @State private var showDifficultySelect = false
     
-    let tileSize: CGFloat = UIScreen.main.bounds.width / CGFloat(GameConstants.cols) - 2
-    
     var body: some View {
-        ZStack {
-            // Background
-            Color.lexisBg.ignoresSafeArea()
-            
-            // Ambient grid lines
-            GeometryReader { geo in
+        GeometryReader { geo in
+            let tileSize = tileSize(for: geo.size)
+            ZStack {
+                // Background
+                Color.lexisBg.ignoresSafeArea()
+
+                // Ambient grid lines
                 Path { path in
                     for col in 0...GameConstants.cols {
                         let x = CGFloat(col) * (tileSize + 2) + 16
@@ -42,44 +41,57 @@ struct GameView: View {
                     }
                 }
                 .stroke(Color.lexisBlockBorder.opacity(0.12), lineWidth: 0.5)
+                .allowsHitTesting(false)
+
+                switch model.phase {
+                case .menu:
+                    MenuView(model: model, showSettings: $showSettings, showDifficultySelect: $showDifficultySelect)
+                case .playing, .paused:
+                    PlayingView(
+                        model: model,
+                        tileSize: tileSize,
+                        showWildcardPicker: $showWildcardPicker,
+                        selectedTiles: $selectedTiles,
+                        wordFlashText: $wordFlashText,
+                        wordFlashOpacity: $wordFlashOpacity,
+                        wordFlashColor: $wordFlashColor,
+                        showSettings: $showSettings
+                    )
+                case .gameOver:
+                    if model.isDailyMode, let result = model.dailyManager.todayResult {
+                        DailyResultView(result: result, streak: model.dailyManager.currentStreak)
+                            .onDisappear {
+                                model.phase = .menu
+                            }
+                    } else {
+                        GameOverView(model: model, showDifficultySelect: $showDifficultySelect)
+                    }
+                }
             }
-            .allowsHitTesting(false)
-            
-            switch model.phase {
-            case .menu:
-                MenuView(model: model, showSettings: $showSettings, showDifficultySelect: $showDifficultySelect)
-            case .playing, .paused:
-                PlayingView(
-                    model: model,
-                    tileSize: tileSize,
-                    showWildcardPicker: $showWildcardPicker,
-                    selectedTiles: $selectedTiles,
-                    wordFlashText: $wordFlashText,
-                    wordFlashOpacity: $wordFlashOpacity,
-                    wordFlashColor: $wordFlashColor,
-                    showSettings: $showSettings
-                )
-            case .gameOver:
-                if model.isDailyMode, let result = model.dailyManager.todayResult {
-                    DailyResultView(result: result, streak: model.dailyManager.currentStreak)
-                        .onDisappear {
-                            model.phase = .menu
-                        }
-                } else {
-                    GameOverView(model: model, showDifficultySelect: $showDifficultySelect)
+            .sheet(isPresented: $showSettings) {
+                SettingsView { _ in
+                    // If mid-game, the new speed/rules apply from next spawn onward
+                }
+            }
+            .sheet(isPresented: $showDifficultySelect) {
+                DifficultySelectSheet { _ in
+                    model.startGame()
                 }
             }
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView { _ in
-                // If mid-game, the new speed/rules apply from next spawn onward
-            }
-        }
-        .sheet(isPresented: $showDifficultySelect) {
-            DifficultySelectSheet { _ in
-                model.startGame()
-            }
-        }
+    }
+
+    // Tile size was previously derived from screen WIDTH alone, which on a
+    // 14-row board silently overflowed the screen HEIGHT on every device —
+    // pushing the header off the top and the controls panel off the bottom
+    // (never caught before because this project had no buildable Xcode
+    // target to actually run it in). Constraining by both dimensions keeps
+    // the whole PlayingView layout on-screen everywhere.
+    private func tileSize(for size: CGSize) -> CGFloat {
+        let widthBased = size.width / CGFloat(GameConstants.cols) - 2
+        let reservedChromeHeight: CGFloat = 340 // header + banner + recent-words strip + controls panel
+        let heightBased = (size.height - reservedChromeHeight) / CGFloat(GameConstants.rows) - 2
+        return min(widthBased, heightBased)
     }
 }
 
@@ -100,6 +112,34 @@ struct PlayingView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            headerBar
+            statusBanner
+            Spacer(minLength: 4)
+            boardArea
+            recentWordsStrip
+            controlsPanel
+        }
+        .onChange(of: model.lastWordResult) { _, result in
+            if let result = result {
+                triggerWordFlash(result)
+            }
+        }
+        .onChange(of: model.isWildcard) { _, wild in
+            if wild {
+                // Fresh wildcard spawn — start collapsed so
+                // FloatingWildcardBadge's onAppear auto-expand plays again.
+                showWildcardPicker = false
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.comboCount)
+        .animation(.easeInOut(duration: 0.2), value: model.dangerZoneActive)
+        .animation(.easeInOut(duration: 0.2), value: model.pendingWords.count)
+        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: model.tipTargetCol)
+        .animation(.easeInOut(duration: 0.2), value: model.tipsAvailable)
+    }
+
+    @ViewBuilder
+    private var headerBar: some View {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -172,7 +212,10 @@ struct PlayingView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            
+    }
+
+    @ViewBuilder
+    private var statusBanner: some View {
             // Danger indicator
             if model.dangerZoneActive {
                 HStack {
@@ -207,9 +250,9 @@ struct PlayingView: View {
                 .padding(.top, 4)
                 .transition(.opacity.combined(with: .scale))
             }
-            
-            Spacer(minLength: 4)
-            
+    }
+
+    private var boardArea: some View {
             // Game Board
             ZStack {
                 // Falling letter indicator column — brightens and gains a
@@ -376,7 +419,9 @@ struct PlayingView: View {
                 }
             }
             .padding(.horizontal, 16)
-            
+    }
+
+    private var recentWordsStrip: some View {
             // Recent words strip
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -388,7 +433,10 @@ struct PlayingView: View {
             }
             .frame(height: 36)
             .padding(.vertical, 6)
-            
+    }
+
+    @ViewBuilder
+    private var controlsPanel: some View {
             // Controls
             VStack(spacing: 10) {
                 // Falling letter preview
@@ -583,24 +631,6 @@ struct PlayingView: View {
                 // Tip picker or control buttons.
             }
             .padding(.bottom, 20)
-        }
-        .onChange(of: model.lastWordResult) { _, result in
-            if let result = result {
-                triggerWordFlash(result)
-            }
-        }
-        .onChange(of: model.isWildcard) { _, wild in
-            if wild {
-                // Fresh wildcard spawn — start collapsed so
-                // FloatingWildcardBadge's onAppear auto-expand plays again.
-                showWildcardPicker = false
-            }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.comboCount)
-        .animation(.easeInOut(duration: 0.2), value: model.dangerZoneActive)
-        .animation(.easeInOut(duration: 0.2), value: model.pendingWords.count)
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: model.tipTargetCol)
-        .animation(.easeInOut(duration: 0.2), value: model.tipsAvailable)
     }
     
     // Computes where the falling letter would land if dropped now, for the

@@ -1,0 +1,357 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
+		4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */; };
+		5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CFDE30095075626DBA2E44 /* GameCenterManager.swift */; };
+		70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */; };
+		9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91BD40CA77F62987EA453C39 /* SettingsView.swift */; };
+		9D504596787970F1993B9EB9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C1397824B81287256A25848F /* Assets.xcassets */; };
+		A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */; };
+		A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB923545BDA3934E8D366F7 /* GameView.swift */; };
+		AA63142E2878FE3249667222 /* lexis_dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7E6663358510107CC9386D8 /* lexis_dictionary.txt */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyChallengeManager.swift; sourceTree = "<group>"; };
+		4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisApp.swift; sourceTree = "<group>"; };
+		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
+		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		91BD40CA77F62987EA453C39 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LEXIS.entitlements; sourceTree = "<group>"; };
+		9BB923545BDA3934E8D366F7 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
+		9F4D3A75F55AA5A04332F034 /* LEXIS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LEXIS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A41DDE36C3A5E46BA85D5578 /* GameModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModel.swift; sourceTree = "<group>"; };
+		A7E6663358510107CC9386D8 /* lexis_dictionary.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = lexis_dictionary.txt; sourceTree = "<group>"; };
+		C1397824B81287256A25848F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		3A9B2FEC0A6DE2CC5BCAF363 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A7E6663358510107CC9386D8 /* lexis_dictionary.txt */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		461C36543D841D9B096041EF /* LEXIS */ = {
+			isa = PBXGroup;
+			children = (
+				C1397824B81287256A25848F /* Assets.xcassets */,
+				35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */,
+				58CFDE30095075626DBA2E44 /* GameCenterManager.swift */,
+				A41DDE36C3A5E46BA85D5578 /* GameModel.swift */,
+				9BB923545BDA3934E8D366F7 /* GameView.swift */,
+				6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */,
+				95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */,
+				4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */,
+				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
+				3A9B2FEC0A6DE2CC5BCAF363 /* Resources */,
+			);
+			path = LEXIS;
+			sourceTree = "<group>";
+		};
+		914B7B8B36AF0118CD3D574C = {
+			isa = PBXGroup;
+			children = (
+				461C36543D841D9B096041EF /* LEXIS */,
+				BB0F4BF76CC7973451A67574 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BB0F4BF76CC7973451A67574 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9F4D3A75F55AA5A04332F034 /* LEXIS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		07007291E92601CFD06FA905 /* LEXIS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D6556FEB7CEA28312608458 /* Build configuration list for PBXNativeTarget "LEXIS" */;
+			buildPhases = (
+				9065D8670A8D73F00C6E2498 /* Sources */,
+				34679A7A2A864FE299A8E5E1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LEXIS;
+			packageProductDependencies = (
+			);
+			productName = LEXIS;
+			productReference = 9F4D3A75F55AA5A04332F034 /* LEXIS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AE525BCF5EA95205F7290D6B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					07007291E92601CFD06FA905 = {
+						DevelopmentTeam = L9SAXP2E2W;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 30FA2A8857C34161E758E99C /* Build configuration list for PBXProject "LEXIS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 914B7B8B36AF0118CD3D574C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BB0F4BF76CC7973451A67574 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				07007291E92601CFD06FA905 /* LEXIS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		34679A7A2A864FE299A8E5E1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D504596787970F1993B9EB9 /* Assets.xcassets in Resources */,
+				AA63142E2878FE3249667222 /* lexis_dictionary.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9065D8670A8D73F00C6E2498 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */,
+				5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */,
+				22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */,
+				A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */,
+				4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */,
+				70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */,
+				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		066D435E558CE7D1FF1D764F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LEXIS/LEXIS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		073EB2B5B8063DEE2E91E6B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LEXIS/LEXIS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A8B3A5B67B12F0CB47BF18DA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DBE25386F2DA4117748C8788 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1D6556FEB7CEA28312608458 /* Build configuration list for PBXNativeTarget "LEXIS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				066D435E558CE7D1FF1D764F /* Debug */,
+				073EB2B5B8063DEE2E91E6B9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		30FA2A8857C34161E758E99C /* Build configuration list for PBXProject "LEXIS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A8B3A5B67B12F0CB47BF18DA /* Debug */,
+				DBE25386F2DA4117748C8788 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AE525BCF5EA95205F7290D6B /* Project object */;
+}
