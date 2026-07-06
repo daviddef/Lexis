@@ -12,13 +12,18 @@ class GameCenterManager: NSObject, ObservableObject {
     @Published var isAuthenticated = false
     @Published var localPlayer = GKLocalPlayer.local
     
-    // Leaderboard IDs — configure these to match App Store Connect entries
+    // Leaderboard IDs — configure these to match App Store Connect entries.
+    // NOTE: `daily` must be created in App Store Connect (My Apps > Game
+    // Center > Leaderboards) with this exact ID before scores will actually
+    // appear — submitting to a leaderboard ID that doesn't exist there yet
+    // is a silent no-op.
     enum LeaderboardID: String {
         case relaxed = "lexis_leaderboard_relaxed"
         case classic = "lexis_leaderboard_classic"
         case rapid = "lexis_leaderboard_rapid"
         case insane = "lexis_leaderboard_insane"
-        
+        case daily = "lexis_leaderboard_daily"
+
         static func from(_ difficulty: Difficulty) -> LeaderboardID {
             switch difficulty {
             case .relaxed: return .relaxed
@@ -73,13 +78,24 @@ class GameCenterManager: NSObject, ObservableObject {
     }
     
     func submitScore(_ score: Int, difficulty: Difficulty) {
+        submitScore(score, to: .from(difficulty))
+    }
+
+    // Daily Challenge has its own leaderboard rather than sharing one of the
+    // four difficulty boards — it's a fixed, identical-for-everyone letter
+    // sequence, so ranking it against endless-mode scores wouldn't be a fair
+    // comparison.
+    func submitDailyScore(_ score: Int) {
+        submitScore(score, to: .daily)
+    }
+
+    private func submitScore(_ score: Int, to leaderboard: LeaderboardID) {
         guard isAuthenticated else { return }
-        let leaderboardID = LeaderboardID.from(difficulty).rawValue
         GKLeaderboard.submitScore(
             score,
             context: 0,
             player: GKLocalPlayer.local,
-            leaderboardIDs: [leaderboardID]
+            leaderboardIDs: [leaderboard.rawValue]
         ) { error in
             if let error = error {
                 print("Score submission failed: \(error.localizedDescription)")
@@ -99,16 +115,33 @@ class GameCenterManager: NSObject, ObservableObject {
         }
     }
     
-    func showLeaderboard(for difficulty: Difficulty) {
+    // friendsOnly matters more than it sounds like it should: a casual
+    // player has essentially zero realistic shot at ranking on a global
+    // word-game leaderboard, but beating a specific friend is achievable
+    // and far more motivating. GKGameCenterViewController supports this
+    // natively via playerScope — this was previously hardcoded to .global.
+    func showLeaderboard(for difficulty: Difficulty, friendsOnly: Bool = false) {
+        presentLeaderboard(id: .from(difficulty), timeScope: .allTime, friendsOnly: friendsOnly)
+    }
+
+    // Daily Challenge scores accumulate on one leaderboard forever, so we
+    // scope the view to .today rather than .allTime — that's what actually
+    // shows "how everyone did on today's puzzle" instead of an all-time
+    // ranking dominated by whoever's played the longest.
+    func showDailyLeaderboard(friendsOnly: Bool = false) {
+        presentLeaderboard(id: .daily, timeScope: .today, friendsOnly: friendsOnly)
+    }
+
+    private func presentLeaderboard(id: LeaderboardID, timeScope: GKLeaderboard.TimeScope, friendsOnly: Bool = false) {
         #if canImport(UIKit)
         guard isAuthenticated,
               let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootVC = windowScene.windows.first?.rootViewController else { return }
-        
+
         let gcVC = GKGameCenterViewController(
-            leaderboardID: LeaderboardID.from(difficulty).rawValue,
-            playerScope: .global,
-            timeScope: .allTime
+            leaderboardID: id.rawValue,
+            playerScope: friendsOnly ? .friendsOnly : .global,
+            timeScope: timeScope
         )
         gcVC.gameCenterDelegate = self
         rootVC.present(gcVC, animated: true)

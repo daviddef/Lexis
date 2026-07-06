@@ -7,29 +7,65 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4004408499B751AFCEEFF955 /* SoundManager.swift */; };
 		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
 		4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */; };
+		55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */; };
 		5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CFDE30095075626DBA2E44 /* GameCenterManager.swift */; };
+		69EF15952BB6BD740E3D891F /* LexisWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3447805539796661F1B3F20A /* LexisWidgetBundle.swift */; };
 		70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */; };
+		81C4F39B56615A5FC9476A29 /* LexisWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3E643DB65640DCA73650FD /* LexisWidget.swift */; };
 		9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91BD40CA77F62987EA453C39 /* SettingsView.swift */; };
 		9D504596787970F1993B9EB9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C1397824B81287256A25848F /* Assets.xcassets */; };
 		A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */; };
 		A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB923545BDA3934E8D366F7 /* GameView.swift */; };
 		AA63142E2878FE3249667222 /* lexis_dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7E6663358510107CC9386D8 /* lexis_dictionary.txt */; };
+		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7A5C6955F8B9E2151D02268C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE525BCF5EA95205F7290D6B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FA3607C3FB1C774AD7697C41;
+			remoteInfo = LexisWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1AD7B1BFED5034616C1730CA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileTheme.swift; sourceTree = "<group>"; };
+		3447805539796661F1B3F20A /* LexisWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidgetBundle.swift; sourceTree = "<group>"; };
 		35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyChallengeManager.swift; sourceTree = "<group>"; };
+		4004408499B751AFCEEFF955 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisApp.swift; sourceTree = "<group>"; };
 		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
+		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
 		91BD40CA77F62987EA453C39 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LEXIS.entitlements; sourceTree = "<group>"; };
 		9BB923545BDA3934E8D366F7 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
 		9F4D3A75F55AA5A04332F034 /* LEXIS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LEXIS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = LexisWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A41DDE36C3A5E46BA85D5578 /* GameModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModel.swift; sourceTree = "<group>"; };
 		A7E6663358510107CC9386D8 /* lexis_dictionary.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = lexis_dictionary.txt; sourceTree = "<group>"; };
 		C1397824B81287256A25848F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E1F1878280F4907CF1A45767 /* LexisWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LexisWidget.entitlements; sourceTree = "<group>"; };
+		E82AC7C4A8D76CFDD66C5560 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -53,15 +89,29 @@
 				95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */,
 				4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */,
 				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
+				4004408499B751AFCEEFF955 /* SoundManager.swift */,
+				11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */,
 				3A9B2FEC0A6DE2CC5BCAF363 /* Resources */,
 			);
 			path = LEXIS;
+			sourceTree = "<group>";
+		};
+		6D9F17F3CBBD98CC5729FB09 /* LexisWidget */ = {
+			isa = PBXGroup;
+			children = (
+				E82AC7C4A8D76CFDD66C5560 /* Info.plist */,
+				E1F1878280F4907CF1A45767 /* LexisWidget.entitlements */,
+				6A3E643DB65640DCA73650FD /* LexisWidget.swift */,
+				3447805539796661F1B3F20A /* LexisWidgetBundle.swift */,
+			);
+			path = LexisWidget;
 			sourceTree = "<group>";
 		};
 		914B7B8B36AF0118CD3D574C = {
 			isa = PBXGroup;
 			children = (
 				461C36543D841D9B096041EF /* LEXIS */,
+				6D9F17F3CBBD98CC5729FB09 /* LexisWidget */,
 				BB0F4BF76CC7973451A67574 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -70,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				9F4D3A75F55AA5A04332F034 /* LEXIS.app */,
+				A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,10 +134,12 @@
 			buildPhases = (
 				9065D8670A8D73F00C6E2498 /* Sources */,
 				34679A7A2A864FE299A8E5E1 /* Resources */,
+				1AD7B1BFED5034616C1730CA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F36DCF6CAAA8477BF80ADF75 /* PBXTargetDependency */,
 			);
 			name = LEXIS;
 			packageProductDependencies = (
@@ -94,6 +147,23 @@
 			productName = LEXIS;
 			productReference = 9F4D3A75F55AA5A04332F034 /* LEXIS.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FA3607C3FB1C774AD7697C41 /* LexisWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C60D8B529D0D59AE6D348C85 /* Build configuration list for PBXNativeTarget "LexisWidgetExtension" */;
+			buildPhases = (
+				5AAA690FA003A688CDBE599C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LexisWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = LexisWidgetExtension;
+			productReference = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -105,6 +175,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					07007291E92601CFD06FA905 = {
+						DevelopmentTeam = L9SAXP2E2W;
+						ProvisioningStyle = Automatic;
+					};
+					FA3607C3FB1C774AD7697C41 = {
 						DevelopmentTeam = L9SAXP2E2W;
 						ProvisioningStyle = Automatic;
 					};
@@ -125,6 +199,7 @@
 			projectRoot = "";
 			targets = (
 				07007291E92601CFD06FA905 /* LEXIS */,
+				FA3607C3FB1C774AD7697C41 /* LexisWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -142,6 +217,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5AAA690FA003A688CDBE599C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81C4F39B56615A5FC9476A29 /* LexisWidget.swift in Sources */,
+				69EF15952BB6BD740E3D891F /* LexisWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9065D8670A8D73F00C6E2498 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -153,10 +237,20 @@
 				4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */,
 				70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */,
 				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
+				1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */,
+				55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F36DCF6CAAA8477BF80ADF75 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FA3607C3FB1C774AD7697C41 /* LexisWidgetExtension */;
+			targetProxy = 7A5C6955F8B9E2151D02268C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		066D435E558CE7D1FF1D764F /* Debug */ = {
@@ -170,8 +264,12 @@
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations~ipad" = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -196,8 +294,12 @@
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations~ipad" = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -210,6 +312,30 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		6D1E0CDF3CD82F560294AB88 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LexisWidget/LexisWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LexisWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis.widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		A8B3A5B67B12F0CB47BF18DA /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -273,6 +399,30 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
+		};
+		CAB23BC4F763E06D877ABE09 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LexisWidget/LexisWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LexisWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis.widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		DBE25386F2DA4117748C8788 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -347,6 +497,15 @@
 			buildConfigurations = (
 				A8B3A5B67B12F0CB47BF18DA /* Debug */,
 				DBE25386F2DA4117748C8788 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C60D8B529D0D59AE6D348C85 /* Build configuration list for PBXNativeTarget "LexisWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D1E0CDF3CD82F560294AB88 /* Debug */,
+				CAB23BC4F763E06D877ABE09 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

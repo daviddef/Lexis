@@ -111,11 +111,13 @@ enum Difficulty: String, CaseIterable, Identifiable, Codable {
 
 // MARK: - Game Constants
 struct GameConstants {
-    static let cols = 7
+    static let cols = 9
     static let rows = 14
-    static let minWordLength = 3
+    static let minWordLength = 2
     static let dangerRow = 2
     static let bombInterval = 25
+    static let dynamiteInterval = 18
+    static let diagonalScoreMultiplier = 1.25
 }
 
 // MARK: - Settings
@@ -141,6 +143,12 @@ class GameSettings: ObservableObject {
     @Published var largeText: Bool {
         didSet { UserDefaults.standard.set(largeText, forKey: "lexisLargeText") }
     }
+    @Published var tileTheme: TileTheme {
+        didSet { UserDefaults.standard.set(tileTheme.rawValue, forKey: "lexisTileTheme") }
+    }
+    @Published var hasSeenTutorial: Bool {
+        didSet { UserDefaults.standard.set(hasSeenTutorial, forKey: "lexisHasSeenTutorial") }
+    }
 
     private init() {
         let savedDiff = UserDefaults.standard.string(forKey: "lexisDifficulty") ?? Difficulty.classic.rawValue
@@ -150,6 +158,9 @@ class GameSettings: ObservableObject {
         self.colorBlindMode = UserDefaults.standard.object(forKey: "lexisColorBlind") as? Bool ?? false
         self.showGhostPiece = UserDefaults.standard.object(forKey: "lexisGhost") as? Bool ?? true
         self.largeText = UserDefaults.standard.object(forKey: "lexisLargeText") as? Bool ?? false
+        let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
+        self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
+        self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
     }
 
     func highScore(for difficulty: Difficulty) -> Int {
@@ -334,11 +345,33 @@ class GameModel: ObservableObject {
     @Published var fallingRow: Int = 0
     @Published var isWildcard: Bool = false
     @Published var isBomb: Bool = false
+    @Published var isDynamite: Bool = false   // explodes on landing, removing just the one tile it hits (not the whole column)
+    // A genuine lookahead at what's coming after the current piece — drawn
+    // from the bag (or the daily sequence) without consuming it. The header
+    // preview used to just redundantly show the CURRENT falling letter,
+    // which is already visible on the board; this is what actually lets a
+    // player plan a word around what's coming next, the way a "next piece"
+    // preview does in any falling-block game.
+    @Published var upcomingLetter: Character = "A"
+    @Published var upcomingIsWildcard: Bool = false
+    @Published var upcomingIsBomb: Bool = false
+    @Published var upcomingIsDynamite: Bool = false
     @Published var score: Int = 0
     @Published var level: Int = 1
     @Published var phase: GamePhase = .menu
     @Published var lastWordResult: WordResult? = nil
+    @Published var perfectClear: Bool = false   // toggled briefly when a clear happens to empty the whole board
+    @Published var perfectClearBonus: Int = 0
     @Published var comboCount: Int = 0
+    // blocksDropped at the last combo-counted clear. Used to decide whether
+    // the NEXT clear continues the streak or starts a fresh one — see
+    // comboDecayBlockWindow below.
+    private var lastComboBlockCount: Int = 0
+    // If more pieces than this drop between one clear and the next, the
+    // combo resets instead of continuing — this is what makes "×N COMBO!"
+    // an actual hot streak the player has to protect by keeping up tempo,
+    // rather than a number that only ever climbs for the rest of the run.
+    private let comboDecayBlockWindow = 3
     @Published var highScore: Int = 0
     @Published var blocksDropped: Int = 0
     @Published var foundWords: [WordResult] = []
@@ -348,11 +381,21 @@ class GameModel: ObservableObject {
     @Published var justUsedBomb: Bool = false
     @Published var tipsAvailable: Int = 0    // banked "tip" charges: knock the top tile of a column sideways into a neighbor
     @Published var justUsedTip: Bool = false
-    @Published var tipTargetCol: Int? = nil  // when non-nil, the player has selected a source column and is choosing a direction
     @Published var isStuck: Bool = false   // true when the falling letter has caught on a neighboring tile mid-air
     @Published var pendingWords: [WordResult] = [] // detected words glowing yellow, awaiting a double-tap to clear
     @Published var isDailyMode: Bool = false
     @Published var dailyLettersRemaining: Int = 0
+    // Duel mode reuses the exact same fixed-sequence machinery as Daily
+    // Challenge (dailySequence/dailySequenceIndex below) — the only real
+    // difference is the seed key is a shareable code instead of today's
+    // date, and completion doesn't touch the real daily streak/leaderboard.
+    @Published var isDuelMode: Bool = false
+    @Published var duelCode: String = ""
+    @Published var duelResult: (code: String, score: Int, wordsFound: [String])? = nil
+    // True for either fixed-sequence mode — used wherever the gating is
+    // "no power-ups / fixed pace because everyone must face identical
+    // letters," which applies the same way to both Daily and Duel.
+    private var isSequenceMode: Bool { isDailyMode || isDuelMode }
 
     let settings = GameSettings.shared
     let dailyManager = DailyChallengeManager.shared
@@ -366,6 +409,20 @@ class GameModel: ObservableObject {
     private var dropTimer: Timer?
     private let validator = WordValidator.shared
     private var letterBag: [Character] = []
+
+    // MARK: - First-run tutorial
+    // The menu's "how to play" bullets and the Settings guide are good
+    // reference material, but a brand-new player still has to translate
+    // words into the actual drag/double-tap motions themselves — that gap
+    // is where most casual-game first sessions are lost. Rather than more
+    // text, the very first run scripts the opening few letters to
+    // guarantee an easy word lands in whatever column the player leaves
+    // the piece in (i.e. even if they never touch the screen), so the
+    // "aha, it glowed" moment happens on its own, with a couple of small
+    // tooltips guiding the two motions that matter.
+    @Published var isTutorialActive: Bool = false
+    @Published var tutorialStep: Int = 0 // 0: "drag to steer" / 1: "double-tap to clear"
+    private var tutorialLetterQueue: [Character] = []
     
     // Letter frequency (Scrabble-inspired distribution)
     private let letterPool: [Character] = {
@@ -393,15 +450,32 @@ class GameModel: ObservableObject {
         score = 0
         level = 1
         comboCount = 0
+        lastComboBlockCount = 0
         blocksDropped = 0
         bombsAvailable = 0
         tipsAvailable = 0
-        tipTargetCol = nil
+        utilityCharges = 0
+        isFrozen = false
+        peekLetters = []
         foundWords = []
         lastWordResult = nil
         isDailyMode = false
+        isDuelMode = false
         highScore = settings.highScore(for: settings.difficulty)
         refillBag()
+
+        // First-run tutorial: force an easy, guaranteed-to-glow word into
+        // whatever column the player leaves the piece in, so the "aha, it
+        // glowed" moment happens even if they never touch the screen.
+        if !settings.hasSeenTutorial {
+            isTutorialActive = true
+            tutorialStep = 0
+            tutorialLetterQueue = ["C", "A", "T"]
+        } else {
+            isTutorialActive = false
+            tutorialLetterQueue = []
+        }
+
         spawnNewLetter()
         phase = .playing
         startDropTimer()
@@ -419,13 +493,19 @@ class GameModel: ObservableObject {
         score = 0
         level = 1
         comboCount = 0
+        lastComboBlockCount = 0
         blocksDropped = 0
         bombsAvailable = 0
         tipsAvailable = 0 // no power-ups in daily mode — every player faces the identical challenge
-        tipTargetCol = nil
+        utilityCharges = 0
+        isFrozen = false
+        peekLetters = []
         foundWords = []
         lastWordResult = nil
         isDailyMode = true
+        isDuelMode = false
+        isTutorialActive = false
+        tutorialLetterQueue = []
         dailySequence = dailyManager.todaysLetterSequence()
         dailySequenceIndex = 0
         dailyWordsFoundList = []
@@ -435,6 +515,52 @@ class GameModel: ObservableObject {
         startDropTimer()
     }
     
+    // MARK: - Duel
+    // Async head-to-head: two players play the identical letter sequence
+    // (keyed by a shareable code instead of a date) and compare scores
+    // afterward — no server needed, since DailyChallengeManager's seeded
+    // generator is already fully deterministic from any string key.
+    func startDuel(code: String) {
+        grid = Array(repeating: Array(repeating: nil, count: GameConstants.cols), count: GameConstants.rows)
+        score = 0
+        level = 1
+        comboCount = 0
+        lastComboBlockCount = 0
+        blocksDropped = 0
+        bombsAvailable = 0
+        tipsAvailable = 0 // no power-ups — both players must face identical letters
+        utilityCharges = 0
+        isFrozen = false
+        peekLetters = []
+        foundWords = []
+        lastWordResult = nil
+        isDailyMode = false
+        isDuelMode = true
+        isTutorialActive = false
+        tutorialLetterQueue = []
+        duelCode = code
+        duelResult = nil
+        dailySequence = dailyManager.sequence(for: code)
+        dailySequenceIndex = 0
+        dailyWordsFoundList = []
+        dailyLettersRemaining = dailySequence.count
+        spawnNewLetter()
+        phase = .playing
+        startDropTimer()
+    }
+
+    private func completeDuel(survived: Bool) {
+        dropTimer?.invalidate()
+        duelResult = (code: duelCode, score: score, wordsFound: dailyWordsFoundList)
+        phase = .gameOver
+        if survived {
+            Haptics.success()
+        } else {
+            Haptics.error()
+            SoundManager.gameOver()
+        }
+    }
+
     func pauseGame() {
         phase = .paused
         dropTimer?.invalidate()
@@ -450,22 +576,31 @@ class GameModel: ObservableObject {
     }
     
     private func nextLetter() -> Character {
+        if !tutorialLetterQueue.isEmpty {
+            return tutorialLetterQueue.removeFirst()
+        }
         if letterBag.isEmpty { refillBag() }
         return letterBag.removeLast()
     }
     
     private func spawnNewLetter() {
         blocksDropped += 1
-        
-        if isDailyMode {
+
+        if isSequenceMode {
             // Sequence exhausted with room still on the board — the player
-            // has successfully completed today's challenge.
+            // has successfully completed the challenge (today's Daily
+            // puzzle, or the other player's Duel sequence).
             if dailySequenceIndex >= dailySequence.count {
-                completeDailyChallenge(survived: true)
+                if isDuelMode {
+                    completeDuel(survived: true)
+                } else {
+                    completeDailyChallenge(survived: true)
+                }
                 return
             }
             isWildcard = false
             isBomb = false
+            isDynamite = false
             fallingLetter = dailySequence[dailySequenceIndex]
             dailySequenceIndex += 1
             dailyLettersRemaining = dailySequence.count - dailySequenceIndex
@@ -473,8 +608,11 @@ class GameModel: ObservableObject {
             let diff = settings.difficulty
             isWildcard = (blocksDropped % diff.wildcardInterval == 0)
             isBomb = !isWildcard && (blocksDropped % GameConstants.bombInterval == 0) && blocksDropped > 0
+            isDynamite = !isWildcard && !isBomb && (blocksDropped % GameConstants.dynamiteInterval == 0) && blocksDropped > 0
             if isBomb {
                 fallingLetter = "✸"
+            } else if isDynamite {
+                fallingLetter = "🧨"
             } else {
                 fallingLetter = isWildcard ? "★" : nextLetter()
             }
@@ -487,15 +625,49 @@ class GameModel: ObservableObject {
         
         // Check if spawn position is occupied -> game over
         if grid[0][fallingCol] != nil {
-            if isDailyMode {
+            if isDuelMode {
+                completeDuel(survived: false)
+            } else if isDailyMode {
                 completeDailyChallenge(survived: false)
             } else {
                 triggerGameOver()
             }
             return
         }
-        
+
         checkDangerZone()
+        updateUpcomingPreview()
+    }
+
+    // Computes what the NEXT spawn (after this one) will be, without
+    // actually consuming it from the bag/sequence. Mirrors the same
+    // isWildcard/isBomb/isDynamite priority order as spawnNewLetter() so the
+    // preview never shows a state that couldn't actually occur.
+    private func updateUpcomingPreview() {
+        if isSequenceMode {
+            if dailySequenceIndex < dailySequence.count {
+                upcomingLetter = dailySequence[dailySequenceIndex]
+            }
+            upcomingIsWildcard = false
+            upcomingIsBomb = false
+            upcomingIsDynamite = false
+            return
+        }
+        let nextBlockCount = blocksDropped + 1
+        let diff = settings.difficulty
+        upcomingIsWildcard = (nextBlockCount % diff.wildcardInterval == 0)
+        upcomingIsBomb = !upcomingIsWildcard && (nextBlockCount % GameConstants.bombInterval == 0) && nextBlockCount > 0
+        upcomingIsDynamite = !upcomingIsWildcard && !upcomingIsBomb && (nextBlockCount % GameConstants.dynamiteInterval == 0) && nextBlockCount > 0
+        if upcomingIsBomb {
+            upcomingLetter = "✸"
+        } else if upcomingIsDynamite {
+            upcomingLetter = "🧨"
+        } else if upcomingIsWildcard {
+            upcomingLetter = "★"
+        } else {
+            if letterBag.isEmpty { refillBag() }
+            upcomingLetter = letterBag.last ?? "A"
+        }
     }
     
     private func completeDailyChallenge(survived: Bool) {
@@ -506,28 +678,40 @@ class GameModel: ObservableObject {
             blocksPlaced: blocksDropped,
             survived: survived
         )
+        GameCenterManager.shared.submitDailyScore(score)
         phase = .gameOver
         if survived {
             Haptics.success()
         } else {
             Haptics.error()
+            SoundManager.gameOver()
         }
     }
-    
+
+    // How much of the danger zone is actually filled, 0...1 — drives an
+    // escalating vignette in the view layer rather than the single static
+    // "you're in danger, full stop" banner this used to be. A board with
+    // one column brushing the danger zone should feel very different from
+    // one with every column crowding it.
+    @Published var dangerSeverity: Double = 0
+
     private func checkDangerZone() {
-        var danger = false
+        var occupiedCols = 0
         for col in 0..<GameConstants.cols {
             for row in 0...GameConstants.dangerRow {
                 if grid[row][col] != nil {
-                    danger = true
+                    occupiedCols += 1
                     break
                 }
             }
         }
+        let danger = occupiedCols > 0
         if danger && !dangerZoneActive {
             Haptics.warning()
+            SoundManager.dangerEnter()
         }
         dangerZoneActive = danger
+        dangerSeverity = Double(occupiedCols) / Double(GameConstants.cols)
     }
     
     private func startDropTimer() {
@@ -539,14 +723,19 @@ class GameModel: ObservableObject {
     // engages/disengages, so the timer never has two competing owners.
     private func restartDropTimerForCurrentSpeed() {
         dropTimer?.invalidate()
+        // A Freeze charge in effect always wins — anything else that tries
+        // to restart the timer mid-freeze (soft-drop engaging, a new drag)
+        // just leaves it stopped. Only the freeze-expiry callback in
+        // useFreeze(), which clears isFrozen first, actually restarts it.
+        guard !isFrozen else { return }
         let interval: Double
         if isSoftDropping {
             interval = softDropInterval
-        } else if isDailyMode {
-            // Fixed, unhurried pace — the daily challenge tests word-finding
-            // skill against a shared fixed letter set, not reflexes against
-            // an escalating speed curve. Everyone should face the same
-            // pressure level.
+        } else if isSequenceMode {
+            // Fixed, unhurried pace — a fixed-sequence mode tests word-
+            // finding skill against a shared fixed letter set, not reflexes
+            // against an escalating speed curve. Everyone comparing results
+            // should face the same pressure level.
             interval = 1.6
         } else {
             let diff = settings.difficulty
@@ -645,18 +834,41 @@ class GameModel: ObservableObject {
     // without committing to a full hard drop. Releasing the drag restores
     // normal timer-driven falling immediately.
     @Published var isSoftDropping: Bool = false
-    private let softDropInterval: Double = 0.06 // fast, but not instant — still a readable fall
-    
+    // Not a fixed constant — updateSoftDropSpeed(velocity:) rewrites this
+    // continuously while the drag is active, so the fall speed tracks how
+    // fast the player is actually dragging rather than snapping to one
+    // fixed fast speed the instant a downward drag is detected.
+    private static let softDropIntervalRange = (lowerBound: 0.02, upperBound: 0.16)
+    private var softDropInterval: Double = GameModel.softDropIntervalRange.upperBound
+    // The drag velocity (points/sec) at which soft drop reaches its fastest
+    // interval. Tuned empirically against tileSize-scale drag distances.
+    private static let softDropReferenceVelocity: Double = 900
+
     func beginSoftDrop() {
         guard phase == .playing, !isSoftDropping else { return }
         isSoftDropping = true
+        softDropInterval = Self.softDropIntervalRange.upperBound
         Haptics.light()
         restartDropTimerForCurrentSpeed()
     }
-    
+
     func endSoftDrop() {
         guard isSoftDropping else { return }
         isSoftDropping = false
+        restartDropTimerForCurrentSpeed()
+    }
+
+    // Called continuously while the player's drag stays vertical-dominant,
+    // so the drop tick interval tracks their current swipe speed instead of
+    // jumping straight to one fixed "fast" rate the moment soft-drop
+    // engages.
+    func updateSoftDropSpeed(velocity: Double) {
+        guard isSoftDropping else { return }
+        let clamped = min(1, max(0, abs(velocity) / Self.softDropReferenceVelocity))
+        let range = Self.softDropIntervalRange
+        let newInterval = range.upperBound - (range.upperBound - range.lowerBound) * clamped
+        guard abs(newInterval - softDropInterval) > 0.004 else { return } // avoid restarting the timer every pixel
+        softDropInterval = newInterval
         restartDropTimerForCurrentSpeed()
     }
     
@@ -668,6 +880,7 @@ class GameModel: ObservableObject {
         clearColumn(fallingCol)
         justUsedBomb = true
         Haptics.success()
+        SoundManager.powerUp()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             self.justUsedBomb = false
         }
@@ -679,8 +892,79 @@ class GameModel: ObservableObject {
         }
         checkDangerZone()
     }
-    
-    // MARK: - Tip mechanic
+
+    // Centralized so every placeLetter() branch (bomb, dynamite, normal
+    // tile) awards a utility charge the same way on level-up, instead of
+    // each branch recomputing `level` independently with no shared payoff.
+    private func updateLevel() {
+        let newLevel = max(1, blocksDropped / 15 + 1)
+        if newLevel > level && !isSequenceMode { // no power-ups in fixed-sequence modes — see startDailyChallenge()/startDuel()
+            utilityCharges = min(3, utilityCharges + 1)
+        }
+        level = newLevel
+    }
+
+    // MARK: - Utility power-ups (Freeze / Reroll / Peek)
+    // Bomb rewards vocabulary (5+ letter words) and Tip rewards tempo
+    // (chained combos) — utilityCharges is a third currency, earned simply
+    // by leveling up, spendable on whichever of three different problems is
+    // actually bothering the player right now rather than forcing three
+    // separate meters for three fairly small conveniences.
+    @Published var utilityCharges: Int = 0
+    @Published var isFrozen: Bool = false
+    @Published var peekLetters: [Character] = []
+
+    // Freeze: pause the drop timer for a few seconds — a breather to think,
+    // not an escape from a bad board (the board itself doesn't change).
+    func useFreeze() {
+        guard utilityCharges > 0, phase == .playing, !isFrozen else { return }
+        utilityCharges -= 1
+        isFrozen = true
+        dropTimer?.invalidate()
+        Haptics.success()
+        SoundManager.powerUp()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            guard self.phase == .playing else { return }
+            self.isFrozen = false
+            self.restartDropTimerForCurrentSpeed()
+        }
+    }
+
+    // Reroll: swap the current falling letter for a fresh draw — the letter
+    // itself is the problem here (dead weight for the board you've built),
+    // not the board state, so this doesn't touch the grid at all.
+    func useReroll() {
+        guard utilityCharges > 0, phase == .playing, !isWildcard, !isBomb, !isDynamite else { return }
+        utilityCharges -= 1
+        fallingLetter = nextLetter()
+        Haptics.success()
+        SoundManager.powerUp()
+    }
+
+    // Peek: briefly reveal the 2 letters after the very next one (which is
+    // already always visible via upcomingLetter) — for a player weighing
+    // whether to finish a word now or wait for something better.
+    func usePeek() {
+        guard utilityCharges > 0, phase == .playing, peekLetters.isEmpty else { return }
+        utilityCharges -= 1
+        // Peeking this deep can require refilling the bag early to have
+        // enough letters to show — safe, since refillBag() is just a
+        // reshuffle and doesn't change what's already queued to be drawn.
+        // nextLetter() draws from the END of the bag, so the letter drawn
+        // 2nd-from-now sits at count-2 and 3rd-from-now at count-3 —
+        // dropLast() removes the already-visible upcomingLetter (count-1),
+        // and reversed() puts what's left back into draw order.
+        while letterBag.count < 3 { refillBag() }
+        peekLetters = Array(letterBag.suffix(3).dropLast().reversed())
+        Haptics.success()
+        SoundManager.powerUp()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            self.peekLetters = []
+        }
+    }
+
+
+    // MARK: - Tip mechanic ("knock")
     // A banked, limited-use action: relocate the topmost tile of a column
     // sideways onto the top of a neighboring column, purely to reveal
     // whatever word might now be readable underneath it. Unlike the bomb,
@@ -689,74 +973,62 @@ class GameModel: ObservableObject {
     // free "get out of danger" card. Only the very top tile of a column is
     // eligible, and the destination must have room (its own top tile can't
     // already be at the topmost row).
-    
-    // Step 1: player selects which column's top tile they want to move.
-    // Call this when they tap/long-press a top tile — it arms the tip and
-    // waits for a direction choice.
-    func selectTipSource(col: Int) {
-        guard tipsAvailable > 0, phase == .playing else { return }
-        guard topmostTileRow(in: col) != nil else { return } // nothing to tip in an empty column
-        tipTargetCol = col
-        Haptics.light()
-    }
-    
-    func cancelTip() {
-        tipTargetCol = nil
-    }
-    
-    // Step 2: player chooses left or right. Moves the source column's top
-    // tile onto the top of the destination column, if there's room.
-    func confirmTip(direction: TipDirection) {
-        guard tipsAvailable > 0, let sourceCol = tipTargetCol, phase == .playing else { return }
-        let destCol = direction == .left ? sourceCol - 1 : sourceCol + 1
+    //
+    // This used to be a two-step tap-to-arm-then-choose-a-side flow with an
+    // intermediate confirmation panel. Players expected a single direct
+    // motion — swipe the tile off the stack and it falls down that side —
+    // so it's now one atomic call triggered by a swipe gesture on the tile
+    // itself (see the per-tile gesture in GameView.swift).
+    func knockTile(col: Int, direction: TipDirection) {
+        guard phase == .playing else { return }
+        guard tipsAvailable > 0 else {
+            Haptics.rigid() // this tile IS knockable, just no charge banked to spend
+            SoundManager.reject()
+            return
+        }
+        let destCol = direction == .left ? col - 1 : col + 1
         guard destCol >= 0, destCol < GameConstants.cols else {
             Haptics.rigid()
+            SoundManager.reject()
             return
         }
-        guard let sourceRow = topmostTileRow(in: sourceCol), var tile = grid[sourceRow][sourceCol] else {
-            tipTargetCol = nil
+        guard let sourceRow = topmostTileRow(in: col), var tile = grid[sourceRow][col] else {
             return
         }
-        
+
         // Destination needs an open landing row — its current top tile
-        // (or the floor) determines where the tipped tile settles.
+        // (or the floor) determines where the knocked tile settles.
         let destLandingRow = topmostTileRow(in: destCol).map { $0 - 1 } ?? (GameConstants.rows - 1)
         guard destLandingRow >= 0 else {
             Haptics.rigid() // destination column is already full to the ceiling
+            SoundManager.reject()
             return
         }
-        
+
         tipsAvailable -= 1
-        grid[sourceRow][sourceCol] = nil
+        grid[sourceRow][col] = nil
         tile.row = destLandingRow
         tile.col = destCol
         grid[destLandingRow][destCol] = tile
-        tipTargetCol = nil
         justUsedTip = true
         Haptics.success()
-        
-        // Tipping can reveal or complete a word both in the column the
+        SoundManager.powerUp()
+
+        // Knocking can reveal or complete a word both in the column the
         // tile left (now shorter) and the column it landed in — check both.
         markGlowingWords()
         checkDangerZone()
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             self.justUsedTip = false
         }
     }
-    
+
     private func topmostTileRow(in col: Int) -> Int? {
         for row in 0..<GameConstants.rows {
             if grid[row][col] != nil { return row }
         }
         return nil
-    }
-    
-    // The letter currently armed for tipping, for UI display in the
-    // direction-picker prompt.
-    var tipSourceLetter: Character? {
-        guard let col = tipTargetCol, let row = topmostTileRow(in: col) else { return nil }
-        return grid[row][col]?.letter
     }
     
     private var stuckTicksElapsed: Int = 0
@@ -783,8 +1055,12 @@ class GameModel: ObservableObject {
         if nextRow >= GameConstants.rows || grid[nextRow][fallingCol] != nil {
             placeLetter()
         } else {
+            // Deliberately NOT calling checkForStick() here. Sticking should
+            // only ever be triggered by the player actively steering into a
+            // neighbor (moveLeft/moveRight already call it) — not merely by
+            // natural vertical fall carrying the piece past a tile that
+            // happens to be at the same row in an adjacent column.
             fallingRow = nextRow
-            checkForStick()
         }
     }
     
@@ -796,13 +1072,36 @@ class GameModel: ObservableObject {
         if isBomb {
             clearColumn(fallingCol)
             Haptics.success()
-            level = max(1, blocksDropped / 15 + 1)
+            SoundManager.powerUp()
+            updateLevel()
             checkDangerZone()
             spawnNewLetter()
             startDropTimer()
             return
         }
-        
+
+        // Dynamite detonates on the single tile it lands on, removing just
+        // that one tile (not the whole column, unlike the bomb) — surgical
+        // rather than sweeping. It's consumed either way, even if it reaches
+        // the floor without hitting anything.
+        if isDynamite {
+            let hitRow = fallingRow + 1
+            if hitRow < GameConstants.rows, grid[hitRow][fallingCol] != nil {
+                grid[hitRow][fallingCol] = nil
+                Haptics.success()
+                SoundManager.powerUp()
+                applyGravity() // let whatever was stacked above the removed tile settle down
+                markGlowingWords() // the shifted stack can reveal or complete a word
+            } else {
+                Haptics.rigid() // fizzled — nothing below to detonate
+            }
+            updateLevel()
+            checkDangerZone()
+            spawnNewLetter()
+            startDropTimer()
+            return
+        }
+
         // Place tile on grid
         let tile = LetterTile(
             letter: fallingLetter,
@@ -813,10 +1112,10 @@ class GameModel: ObservableObject {
         )
         grid[fallingRow][fallingCol] = tile
         Haptics.tileLand() // a subtle tick every time a piece settles, for rhythm
-        
-        // Update level
-        level = max(1, blocksDropped / 15 + 1)
-        
+        SoundManager.tileLand()
+
+        updateLevel()
+
         // Detect words: they now glow yellow rather than auto-clearing, so
         // the player gets to see and choose which ones to bank via a
         // double-tap — turns word-finding into a deliberate, satisfying
@@ -851,6 +1150,10 @@ class GameModel: ObservableObject {
         if !words.isEmpty {
             Haptics.light() // a soft confirm pulse when a word lights up, distinct from the success chime on actual clear
         }
+
+        if isTutorialActive && tutorialStep == 0 && !words.isEmpty {
+            tutorialStep = 1 // "it's glowing — double-tap it to clear"
+        }
     }
     
     // MARK: - Word Detection
@@ -866,7 +1169,13 @@ class GameModel: ObservableObject {
     //   • Diagonals: forward-only (top-left→bottom-right and
     //     top-right→bottom-left), matching the horizontal "no backwards"
     //     rule for consistency.
-    func findAllWords() -> [WordResult] {
+    // Accepts an optional grid so callers can check a hypothetical board
+    // state (e.g. "what if this tile got knocked over there?") without
+    // mutating the real grid — see suggestedKnock() below. `grid` shadows
+    // the instance property of the same name for the rest of this function,
+    // so the body needs no other changes to search whichever grid was passed.
+    func findAllWords(in grid: [[LetterTile?]]? = nil) -> [WordResult] {
+        let grid = grid ?? self.grid
         var results: [WordResult] = []
         var usedPositions = Set<String>()
         
@@ -913,7 +1222,7 @@ class GameModel: ObservableObject {
                     r += 1; c += 1
                 }
                 if tiles.count >= GameConstants.minWordLength {
-                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions)
+                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier)
                 }
             }
         }
@@ -928,12 +1237,30 @@ class GameModel: ObservableObject {
                     r += 1; c -= 1
                 }
                 if tiles.count >= GameConstants.minWordLength {
-                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions)
+                    checkSubstrings(of: tiles, results: &results, usedPositions: &usedPositions, scoreMultiplier: GameConstants.diagonalScoreMultiplier)
                 }
             }
         }
-        
-        return results
+
+        // Final cross-run suppression pass. checkSubstrings() only suppresses
+        // a short word in favor of a longer one WITHIN the same run — but a
+        // vertical run is scanned twice, once forward and once reversed, as
+        // two independent calls. That let a short reversed-direction word
+        // (e.g. "EH") survive even when a longer forward word ("HERE") on
+        // those exact tiles should have taken priority, since each call's
+        // containment check never saw the other call's candidates. Drop any
+        // word whose tile set is fully covered by a strictly longer word's
+        // tile set, regardless of which run or direction produced either one.
+        let survivors = results.filter { candidate in
+            let candidateKeys = Set(candidate.tiles.map { "\($0.row),\($0.col)" })
+            return !results.contains { other in
+                guard other.id != candidate.id else { return false }
+                let otherKeys = Set(other.tiles.map { "\($0.row),\($0.col)" })
+                return otherKeys.count > candidateKeys.count && candidateKeys.isSubset(of: otherKeys)
+            }
+        }
+
+        return survivors
     }
     
     // Scans every contiguous substring of a tile run (in the order given)
@@ -945,7 +1272,11 @@ class GameModel: ObservableObject {
     // suppressed entirely rather than also being offered as a separate,
     // smaller clear. This matches the rule that players get maximum value
     // from a run rather than being tempted to grab a small win early.
-    private func checkSubstrings(of tiles: [LetterTile], results: inout [WordResult], usedPositions: inout Set<String>) {
+    // scoreMultiplier rewards directions that are harder to spot — diagonals
+    // pass this at 1.25 (see findAllWords) since there's otherwise no
+    // mechanical reason to hunt for a diagonal over an easier horizontal or
+    // vertical read.
+    private func checkSubstrings(of tiles: [LetterTile], results: inout [WordResult], usedPositions: inout Set<String>, scoreMultiplier: Double = 1.0) {
         guard tiles.count >= GameConstants.minWordLength else { return }
         
         // First pass: collect every valid (word, tileRange) match in this
@@ -985,7 +1316,8 @@ class GameModel: ObservableObject {
             let run = Array(tiles[candidate.range])
             let key = run.map { "\($0.row),\($0.col)" }.sorted().joined()
             if !usedPositions.contains(key) {
-                results.append(WordResult(word: candidate.word, tiles: run, score: calculateScore(candidate.word), isChain: false))
+                let score = Int(Double(calculateScore(candidate.word)) * scoreMultiplier)
+                results.append(WordResult(word: candidate.word, tiles: run, score: score, isChain: false))
                 usedPositions.insert(key)
             }
         }
@@ -1015,8 +1347,20 @@ class GameModel: ObservableObject {
     }
     
     private func processWords(_ words: [WordResult]) {
-        comboCount += 1
-        
+        if isTutorialActive {
+            // The player just cleared their first word — the loop has been
+            // demonstrated, so the tutorial is done and never runs again.
+            isTutorialActive = false
+            settings.hasSeenTutorial = true
+        }
+
+        if blocksDropped - lastComboBlockCount <= comboDecayBlockWindow {
+            comboCount += 1
+        } else {
+            comboCount = 1
+        }
+        lastComboBlockCount = blocksDropped
+
         var totalScore = 0
         for word in words {
             totalScore += word.score
@@ -1026,20 +1370,22 @@ class GameModel: ObservableObject {
             }
             foundWords.insert(word, at: 0)
             if foundWords.count > 10 { foundWords.removeLast() }
-            if isDailyMode {
+            if isSequenceMode {
                 dailyWordsFoundList.append(word.word)
             }
         }
-        
+
         score += totalScore
-        if !isDailyMode, score > highScore {
+        if !isSequenceMode, score > highScore {
             highScore = score
             settings.setHighScore(highScore, for: settings.difficulty)
         }
         
         lastWordResult = words.first
         Haptics.success()
-        
+        SoundManager.wordClear(length: words.map { $0.word.count }.max() ?? 3)
+
+
         // Longer words (5+) bank a "clear path" bomb charge as a reward,
         // giving players an escape hatch when things get tight later.
         if let longest = words.map({ $0.word.count }).max(), longest >= 5 {
@@ -1067,7 +1413,30 @@ class GameModel: ObservableObject {
         // Apply gravity after clearing
         applyGravity()
         checkDangerZone()
-        
+
+        // Perfect Clear: the clear we just processed happened to empty the
+        // entire board. Rare, skill-adjacent (usually only happens when a
+        // player has been deliberately shaping the board), and worth a
+        // distinct, unmistakable celebration rather than blending into a
+        // normal word-clear — borrowed from Tetris's "All Clear" and Puyo
+        // Puyo, which reward emptying the board as its own achievement.
+        if grid.allSatisfy({ row in row.allSatisfy { $0 == nil } }) {
+            let bonus = 500 * level
+            score += bonus
+            if !isSequenceMode, score > highScore {
+                highScore = score
+                settings.setHighScore(highScore, for: settings.difficulty)
+            }
+            perfectClearBonus = bonus
+            perfectClear = true
+            Haptics.success()
+            SoundManager.fanfare()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                self.perfectClear = false
+            }
+        }
+
+
         // Chain reactions: gravity can reveal new words automatically. These
         // also glow rather than auto-clearing, so a big cascade still gives
         // the player a beat to see and confirm each wave rather than the
@@ -1080,6 +1449,7 @@ class GameModel: ObservableObject {
         if comboCount >= 3 {
             shakeBoard = true
             Haptics.comboEscalation(comboCount)
+            SoundManager.comboEscalation(comboCount)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.shakeBoard = false
             }
@@ -1111,8 +1481,26 @@ class GameModel: ObservableObject {
         phase = .gameOver
         dropTimer?.invalidate()
         Haptics.error()
+        SoundManager.gameOver()
         settings.recordScore(score, difficulty: settings.difficulty, wordsFound: foundWords.count)
         AchievementTracker.onGameOver(score: score, difficulty: settings.difficulty, blocksDropped: blocksDropped)
+    }
+
+    // A Wordle-style recap for an Endless run — DailyChallengeManager
+    // already builds one of these for Daily Challenge, but that was the
+    // ONLY mode with any way to share a result at all. A great Insane-mode
+    // run deserved the same, not just one of five modes.
+    func endlessShareText() -> String {
+        let longest = foundWords.map { $0.word }.max(by: { $0.count < $1.count }) ?? ""
+        var lines = [
+            "LEXIS — \(settings.difficulty.rawValue.uppercased())",
+            "Score: \(score)",
+            "Words: \(foundWords.count)" + (longest.isEmpty ? "" : " (longest: \(longest.uppercased()))"),
+            "Level \(level)"
+        ]
+        lines.append("")
+        lines.append("Play LEXIS — one letter at a time.")
+        return lines.joined(separator: "\n")
     }
     
     // MARK: - Wildcard selection
@@ -1120,6 +1508,7 @@ class GameModel: ObservableObject {
         if isWildcard {
             fallingLetter = letter
             isWildcard = false
+            SoundManager.powerUp()
         }
     }
     
@@ -1167,9 +1556,68 @@ class GameModel: ObservableObject {
         processWords([word])
     }
     
-    // Check if any valid words exist on board (for hint system)
-    func hasAnyWords() -> Bool {
-        return !findAllWords().isEmpty
+    // MARK: - Hint
+    // Every findable word already glows automatically the instant it
+    // appears (see markGlowingWords()), so a hint that just re-scanned the
+    // current board would tell the player nothing they can't already see.
+    // The genuinely useful hint is the opposite case: the board LOOKS dead
+    // (nothing glowing), but knocking some top tile sideways would reveal a
+    // word. This simulates every possible knock against a copy of the grid
+    // and, if one would work, flags that tile for a few seconds.
+    @Published var hintTargetCol: Int? = nil
+    @Published var hintDirection: TipDirection? = nil
+
+    func requestHint() {
+        guard phase == .playing else { return }
+        guard pendingWords.isEmpty else {
+            // Something's already glowing — nothing new to suggest, just
+            // acknowledge the tap so it doesn't feel ignored.
+            Haptics.light()
+            return
+        }
+        guard let suggestion = suggestedKnock() else {
+            Haptics.rigid() // no knock would reveal anything right now
+            SoundManager.reject()
+            return
+        }
+        hintTargetCol = suggestion.col
+        hintDirection = suggestion.direction
+        Haptics.success()
+        SoundManager.powerUp()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            self.hintTargetCol = nil
+            self.hintDirection = nil
+        }
+    }
+
+    private func suggestedKnock() -> (col: Int, direction: TipDirection)? {
+        guard tipsAvailable > 0 else { return nil } // the suggestion wouldn't be actionable anyway
+        for col in 0..<GameConstants.cols {
+            guard topmostTileRow(in: col) != nil else { continue }
+            for direction in [TipDirection.left, .right] {
+                if wouldKnockRevealWord(col: col, direction: direction) {
+                    return (col, direction)
+                }
+            }
+        }
+        return nil
+    }
+
+    private func wouldKnockRevealWord(col: Int, direction: TipDirection) -> Bool {
+        let destCol = direction == .left ? col - 1 : col + 1
+        guard destCol >= 0, destCol < GameConstants.cols else { return false }
+        guard let sourceRow = topmostTileRow(in: col), let tile = grid[sourceRow][col] else { return false }
+        let destLandingRow = topmostTileRow(in: destCol).map { $0 - 1 } ?? (GameConstants.rows - 1)
+        guard destLandingRow >= 0 else { return false }
+
+        var simulatedGrid = grid
+        simulatedGrid[sourceRow][col] = nil
+        var movedTile = tile
+        movedTile.row = destLandingRow
+        movedTile.col = destCol
+        simulatedGrid[destLandingRow][destCol] = movedTile
+
+        return !findAllWords(in: simulatedGrid).isEmpty
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 // MARK: - Seeded RNG
 // A simple deterministic PRNG (splitmix64) so every player worldwide gets
@@ -57,7 +58,14 @@ class DailyChallengeManager: ObservableObject {
         df.timeZone = TimeZone.current // local midnight reset, matching how players think about "today"
         return df
     }()
-    
+
+    // Shared with the LexisWidget extension (a separate process, so it
+    // can't see UserDefaults.standard) via an App Group container — this is
+    // what lets the Home Screen widget show today's streak/status without
+    // the main app needing to be running.
+    static let appGroupID = "group.com.daviddefranceski.lexis"
+    private let defaults: UserDefaults = UserDefaults(suiteName: DailyChallengeManager.appGroupID) ?? .standard
+
     private init() {
         loadState()
     }
@@ -138,7 +146,7 @@ class DailyChallengeManager: ObservableObject {
     private func updateStreak(for result: DailyResult) {
         guard let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) else { return }
         let yesterdayKey = dateFormatter.string(from: yesterday)
-        let lastPlayedKey = UserDefaults.standard.string(forKey: "lexisDailyLastPlayedKey")
+        let lastPlayedKey = defaults.string(forKey: "lexisDailyLastPlayedKey")
         
         if lastPlayedKey == yesterdayKey {
             currentStreak += 1
@@ -148,7 +156,7 @@ class DailyChallengeManager: ObservableObject {
         
         bestStreak = max(bestStreak, currentStreak)
         totalDaysPlayed += 1
-        UserDefaults.standard.set(result.dateKey, forKey: "lexisDailyLastPlayedKey")
+        defaults.set(result.dateKey, forKey: "lexisDailyLastPlayedKey")
     }
     
     // MARK: - Share card
@@ -178,24 +186,25 @@ class DailyChallengeManager: ObservableObject {
     // MARK: - Persistence
     private func saveState() {
         if let result = todayResult, let encoded = try? JSONEncoder().encode(result) {
-            UserDefaults.standard.set(encoded, forKey: "lexisDailyResult_\(result.dateKey)")
+            defaults.set(encoded, forKey: "lexisDailyResult_\(result.dateKey)")
         }
-        UserDefaults.standard.set(currentStreak, forKey: "lexisDailyCurrentStreak")
-        UserDefaults.standard.set(bestStreak, forKey: "lexisDailyBestStreak")
-        UserDefaults.standard.set(totalDaysPlayed, forKey: "lexisDailyTotalDaysPlayed")
+        defaults.set(currentStreak, forKey: "lexisDailyCurrentStreak")
+        defaults.set(bestStreak, forKey: "lexisDailyBestStreak")
+        defaults.set(totalDaysPlayed, forKey: "lexisDailyTotalDaysPlayed")
+        WidgetCenter.shared.reloadAllTimelines()
     }
-    
+
     private func loadState() {
-        currentStreak = UserDefaults.standard.integer(forKey: "lexisDailyCurrentStreak")
-        bestStreak = UserDefaults.standard.integer(forKey: "lexisDailyBestStreak")
-        totalDaysPlayed = UserDefaults.standard.integer(forKey: "lexisDailyTotalDaysPlayed")
+        currentStreak = defaults.integer(forKey: "lexisDailyCurrentStreak")
+        bestStreak = defaults.integer(forKey: "lexisDailyBestStreak")
+        totalDaysPlayed = defaults.integer(forKey: "lexisDailyTotalDaysPlayed")
         
-        if let data = UserDefaults.standard.data(forKey: "lexisDailyResult_\(todayKey)"),
+        if let data = defaults.data(forKey: "lexisDailyResult_\(todayKey)"),
            let decoded = try? JSONDecoder().decode(DailyResult.self, from: data) {
             todayResult = decoded
         }
         
-        if let lastPlayedKey = UserDefaults.standard.string(forKey: "lexisDailyLastPlayedKey"),
+        if let lastPlayedKey = defaults.string(forKey: "lexisDailyLastPlayedKey"),
            lastPlayedKey != todayKey {
             if let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) {
                 let yesterdayKey = dateFormatter.string(from: yesterday)

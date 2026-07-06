@@ -4,16 +4,46 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings = GameSettings.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var showGuide = false
     var onDifficultyChanged: ((Difficulty) -> Void)? = nil
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.lexisBg.ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
-                        
+
+                        // Help section — the on-board "drag to move /
+                        // double-tap to drop" hint used to sit permanently
+                        // under the board; it now lives here instead, plus
+                        // the rest of the mechanics (tips, bombs, wildcards)
+                        // that never had an in-game explainer at all.
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "HELP")
+
+                            Button {
+                                showGuide = true
+                            } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: "questionmark.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.lexisAccent)
+                                        .frame(width: 24)
+                                    Text("How to Play")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.lexisText)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.lexisMid)
+                                }
+                                .padding(16)
+                                .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
+                            }
+                        }
+
                         // Difficulty section
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader(title: "DIFFICULTY")
@@ -35,6 +65,31 @@ struct SettingsView: View {
                             }
                         }
                         
+                        // Tile theme — purely cosmetic, unlocked by real
+                        // milestones so long-time players have something to
+                        // work toward beyond the scoreboard.
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "TILE THEME")
+
+                            VStack(spacing: 10) {
+                                ForEach(TileTheme.allCases) { theme in
+                                    ThemeRow(
+                                        theme: theme,
+                                        isSelected: settings.tileTheme == theme
+                                    ) {
+                                        guard theme.isUnlocked else {
+                                            Haptics.light()
+                                            return
+                                        }
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            settings.tileTheme = theme
+                                        }
+                                        Haptics.light()
+                                    }
+                                }
+                            }
+                        }
+
                         // Gameplay toggles
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader(title: "GAMEPLAY")
@@ -129,6 +184,77 @@ struct SettingsView: View {
                 }
             }
         }
+        .sheet(isPresented: $showGuide) {
+            GuideView()
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - How to Play Guide
+struct GuideView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.lexisBg.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "MOVING & DROPPING")
+                            VStack(alignment: .leading, spacing: 16) {
+                                HowToRow(icon: "hand.draw.fill", text: "Drag left or right anywhere on the board to steer the falling letter")
+                                HowToRow(icon: "arrow.down.to.line", text: "Drag down to speed up the fall, or double-tap the board to drop instantly")
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "CLEARING WORDS")
+                            VStack(alignment: .leading, spacing: 16) {
+                                HowToRow(icon: "hand.tap", text: "Words can read in any of 8 directions. A glowing, pulsing tile means a word is ready")
+                                HowToRow(icon: "hand.tap.fill", text: "Double-tap a glowing tile to confirm the clear")
+                                HowToRow(icon: "star.fill", color: .lexisGold, text: "Golden blocks are wildcards — tap the popup to pick any letter you need")
+                                HowToRow(icon: "arrow.up.right.and.arrow.down.left", text: "Clear words back-to-back without a miss to chain a combo multiplier")
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "POWER-UPS")
+                            VStack(alignment: .leading, spacing: 16) {
+                                HowToRow(icon: "burst.fill", color: .lexisDanger, text: "Spelling a 5+ letter word banks a Clear Path bomb — wipes your current column on demand")
+                                HowToRow(icon: "arrow.left.arrow.right", color: .purple, text: "Chaining combos banks a Tip — swipe a glowing top tile sideways to knock it onto a neighbor and reveal what's underneath")
+                                HowToRow(icon: "flame.fill", color: .lexisDanger, text: "A 🧨 dynamite tile falling into a stack destroys the one tile it lands on — a precise strike, not the whole column")
+                                HowToRow(icon: "bolt.badge.clock.fill", color: .lexisAccent, text: "Leveling up banks a Charge — spend it on Freeze (pause the timer), Reroll (swap your letter), or Peek (see what's coming)")
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.lexisBlock.opacity(0.6)))
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("How to Play")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.lexisBg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(.lexisAccent)
+                        .fontWeight(.bold)
+                }
+            }
+        }
         .preferredColorScheme(.dark)
     }
 }
@@ -140,6 +266,58 @@ struct SectionHeader: View {
             .font(.system(size: 12, weight: .black, design: .monospaced))
             .foregroundColor(.lexisMid)
             .tracking(2)
+    }
+}
+
+struct ThemeRow: View {
+    let theme: TileTheme
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(LinearGradient(colors: [theme.topColor, theme.bottomColor], startPoint: .top, endPoint: .bottom))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(isSelected ? Color.lexisAccent : Color.white.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+                    )
+                    .opacity(theme.isUnlocked ? 1 : 0.4)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(theme.rawValue)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(theme.isUnlocked ? .lexisText : .lexisMid)
+                    Text(theme.isUnlocked ? "Unlocked" : theme.unlockDescription)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.lexisMid)
+                }
+
+                Spacer()
+
+                if !theme.isUnlocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.lexisMid)
+                } else if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.lexisAccent)
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? Color.lexisAccent.opacity(0.08) : Color.lexisBlock.opacity(0.6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(isSelected ? Color.lexisAccent.opacity(0.5) : Color.clear, lineWidth: 1.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
