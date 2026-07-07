@@ -378,6 +378,11 @@ class GameModel: ObservableObject {
     @Published var fallingLetter: Character = "A"
     @Published var fallingCol: Int = 3
     @Published var fallingRow: Int = 0
+    // Identity of the current falling piece + the interval it's descending
+    // at — the view uses these to glide the piece down at fall speed (a new
+    // id on spawn stops the glide from animating up from the last landing).
+    @Published var fallingPieceID = UUID()
+    @Published var currentDropInterval: Double = 1.0
     @Published var isWildcard: Bool = false
     @Published var isBomb: Bool = false
     @Published var isDynamite: Bool = false   // explodes on landing, removing just the one tile it hits (not the whole column)
@@ -668,7 +673,10 @@ class GameModel: ObservableObject {
         fallingRow = 0
         isStuck = false
         stuckTicksElapsed = 0
-        
+        fallingPieceID = UUID() // fresh identity so the glide overlay appears
+                                // at the top rather than sliding up from the
+                                // previous piece's landing spot.
+
         // Check if spawn position is occupied -> game over
         if grid[0][fallingCol] != nil {
             if isDuelMode {
@@ -741,6 +749,12 @@ class GameModel: ObservableObject {
     // one with every column crowding it.
     @Published var dangerSeverity: Double = 0
 
+    // Escalation tiers for the danger zone: 0 safe, 1 entered, 2 mounting
+    // (half the danger row crowded), 3 critical. Crossing UP a tier re-fires
+    // the warning cue, so the dread deepens as the board fills rather than
+    // firing once and going quiet.
+    private var lastDangerTier = 0
+
     private func checkDangerZone() {
         var occupiedCols = 0
         for col in 0..<GameConstants.cols {
@@ -752,12 +766,15 @@ class GameModel: ObservableObject {
             }
         }
         let danger = occupiedCols > 0
-        if danger && !dangerZoneActive {
+        let severity = Double(occupiedCols) / Double(GameConstants.cols)
+        let tier = occupiedCols == 0 ? 0 : (severity >= 0.75 ? 3 : (severity >= 0.5 ? 2 : 1))
+        if tier > lastDangerTier {
             Haptics.warning()
-            SoundManager.dangerEnter()
+            SoundManager.dangerPulse(tier: tier) // lower + louder as it climbs
         }
+        lastDangerTier = tier
         dangerZoneActive = danger
-        dangerSeverity = Double(occupiedCols) / Double(GameConstants.cols)
+        dangerSeverity = severity
     }
     
     private func startDropTimer() {
@@ -787,6 +804,7 @@ class GameModel: ObservableObject {
             let diff = settings.difficulty
             interval = max(diff.minDropInterval, diff.baseDropInterval - Double(level - 1) * diff.speedIncreasePerLevel)
         }
+        currentDropInterval = interval // drives the visual glide speed
         dropTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.dropOneTick()

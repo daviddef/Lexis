@@ -111,6 +111,15 @@ enum SoundManager {
         play(tone(frequency: 98, duration: 0.35, volume: 0.20))
     }
 
+    /// Escalating danger cue: the pitch drops and the volume rises with the
+    /// tier (1 = entered, 3 = critical), so the board filling up sounds
+    /// progressively more ominous instead of a single one-off warning.
+    static func dangerPulse(tier: Int) {
+        let freq = max(52.0, 108.0 - Double(tier) * 18.0)          // ~90 / 72 / 54 Hz
+        let vol = Float(min(0.34, 0.16 + Double(tier) * 0.06))
+        play(tone(frequency: freq, duration: 0.42, volume: vol))
+    }
+
     /// Power-up triggered/resolved (wildcard picked, bomb, dynamite, knock).
     static func powerUp() {
         play(chirp(from: 660, to: 990, duration: 0.14, volume: 0.20))

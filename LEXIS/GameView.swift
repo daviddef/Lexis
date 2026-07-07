@@ -104,7 +104,7 @@ struct GameView: View {
                     .allowsHitTesting(false)
                     .ignoresSafeArea()
                     .onAppear {
-                        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
                             dangerVignettePulse = true
                         }
                     }
@@ -663,6 +663,47 @@ struct PlayingView: View {
                         }
                 )
 
+                // The falling piece, as a free-floating overlay that GLIDES
+                // between cells instead of hard-stepping. It descends over
+                // currentDropInterval (so it moves continuously at fall
+                // speed; soft-drop shortens the interval → it speeds up), and
+                // .id(fallingPieceID) gives each new piece a fresh identity
+                // so a spawn appears at the top rather than sliding up from
+                // the previous piece's landing spot. Same cell-center math as
+                // the shard/indicator overlays, so it lines up with the grid.
+                if model.phase == .playing || model.phase == .paused {
+                    let step = tileSize + 2
+                    ZStack(alignment: .topLeading) {
+                        TileView(
+                            tile: nil,
+                            isFallingPos: true,
+                            fallingLetter: model.fallingLetter,
+                            isWildcard: model.isWildcard,
+                            isBomb: model.isBomb,
+                            isDynamite: model.isDynamite,
+                            isStuckPos: model.isStuck,
+                            isGhostPos: false,
+                            isDangerRow: model.fallingRow < GameConstants.dangerRow,
+                            colorBlindMode: model.settings.colorBlindMode,
+                            largeText: model.settings.largeText,
+                            tileSize: tileSize
+                        )
+                        .position(
+                            x: CGFloat(model.fallingCol) * step + tileSize / 2,
+                            y: CGFloat(model.fallingRow) * step + tileSize / 2
+                        )
+                        .animation(.linear(duration: max(0.05, model.currentDropInterval)), value: model.fallingRow)
+                        .animation(.easeOut(duration: 0.08), value: model.fallingCol)
+                        .id(model.fallingPieceID)
+                    }
+                    .frame(
+                        width: CGFloat(GameConstants.cols) * tileSize + CGFloat(GameConstants.cols - 1) * 2,
+                        height: CGFloat(GameConstants.rows) * (tileSize + 2),
+                        alignment: .topLeading
+                    )
+                    .allowsHitTesting(false)
+                }
+
                 // Bomb explosion burst — pinned to the detonation column via
                 // the same HStack-of-columns layout as the falling-column
                 // indicator, so it lines up exactly with the grid. Keyed by
@@ -1045,14 +1086,17 @@ struct PlayingView: View {
     // that interference entirely.
     @ViewBuilder
     private func tileCell(row: Int, col: Int) -> some View {
+        // The falling piece is NOT drawn here anymore — it's a separate
+        // gliding overlay (see fallingPieceOverlay) so it can move smoothly
+        // between cells. Grid cells render only settled tiles + the ghost.
         let tile = TileView(
             tile: model.grid[row][col],
-            isFallingPos: row == model.fallingRow && col == model.fallingCol,
+            isFallingPos: false,
             fallingLetter: model.fallingLetter,
             isWildcard: model.isWildcard,
             isBomb: model.isBomb,
             isDynamite: model.isDynamite,
-            isStuckPos: model.isStuck && row == model.fallingRow && col == model.fallingCol,
+            isStuckPos: false,
             isGhostPos: model.settings.showGhostPiece && col == model.fallingCol && row == ghostRow(),
             isDangerRow: row < GameConstants.dangerRow,
             isTippable: model.tipsAvailable > 0 && isTopOfColumn(row: row, col: col),
