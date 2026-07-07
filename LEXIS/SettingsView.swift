@@ -221,7 +221,7 @@ struct SettingsView: View {
                             SectionHeader(title: "ABOUT")
                             
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("LEXIS v1.1")
+                                Text("LEXIS \(appVersionString)")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundColor(.lexisText)
                                 Text("One letter. One word. One life.")
@@ -444,6 +444,14 @@ struct DifficultyRow: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+/// The app's marketing version + build, read from the bundle so it never goes
+/// stale as versions bump (this used to be hardcoded and drifted out of date).
+var appVersionString: String {
+    let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+    return "v\(v) (\(b))"
 }
 
 /// "7:00 PM" style label for an hour 0…23, used by the daily-reminder time

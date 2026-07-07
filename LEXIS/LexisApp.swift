@@ -3,6 +3,10 @@ import SwiftUI
 @main
 struct LexisApp: App {
     init() {
+        // Run persistence migrations FIRST, synchronously, before any manager
+        // reads its UserDefaults-backed state.
+        DataMigration.runIfNeeded()
+
         // Kick off Game Center auth early so leaderboards/achievements are
         // ready by the time the player finishes their first game. Same task
         // wires up telemetry: attach analytics sinks, log the app-open, and

@@ -53,6 +53,7 @@ struct GameView: View {
                 }
                 .stroke(Color.lexisBlockBorder.opacity(0.12), lineWidth: 0.5)
                 .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
                 // Phase content, cross-faded with a subtle scale so moving
                 // between menu / play / game-over feels like one continuous
@@ -1854,6 +1855,7 @@ struct MenuView: View {
             // decorative layer, giving the menu depth and life beneath the
             // sharper logo rain and content.
             AmbientDriftLayer(animate: !settings.motionReduced)
+                .accessibilityHidden(true)
 
             // Falling-letter rain spelling LEXIS, as a background layer
             // behind the menu content. It begins at the measured "LEXIS"
@@ -1933,6 +1935,7 @@ struct MenuView: View {
             HStack {
                 Button { showProgress = true } label: { LevelChip() }
                     .buttonStyle(LexisScaleButtonStyle())
+                    .accessibilityLabel("Progress, level and coins")
 
                 Spacer()
 
@@ -1952,6 +1955,7 @@ struct MenuView: View {
                         }
                     }
                 }
+                .accessibilityLabel("Daily goals")
 
                 if gameCenter.isAuthenticated {
                     Button {
@@ -1964,6 +1968,7 @@ struct MenuView: View {
                             .background(Color.lexisBlock.opacity(0.6))
                             .clipShape(Circle())
                     }
+                    .accessibilityLabel("Leaderboards")
                     // A casual player has ~no shot at a global word-game
                     // leaderboard; beating a specific friend is achievable
                     // and far more motivating — this used to only offer the
@@ -1988,6 +1993,7 @@ struct MenuView: View {
                         .background(Color.lexisBlock.opacity(0.6))
                         .clipShape(Circle())
                 }
+                .accessibilityLabel("Settings")
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -2687,6 +2693,16 @@ struct DifficultyCardsRow: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("SELECT DIFFICULTY")
                 .padding(.horizontal, 24)
+
+            // First-run guidance: a newcomer dropped straight into Insane
+            // loses in seconds with no context. Shown only until the player
+            // has recorded their first score anywhere.
+            if settings.allTimeScores().isEmpty {
+                Text("New here? Classic is the place to start.")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.lexisMid)
+                    .padding(.horizontal, 24)
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
