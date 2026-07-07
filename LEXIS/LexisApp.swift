@@ -18,6 +18,8 @@ struct LexisApp: App {
             NotificationManager.shared.refresh()
             // Refresh today's goals (regenerates if the date rolled over).
             GoalsManager.shared.loadOrGenerate()
+            // Roll the weekly event forward if the week/weekend flavour changed.
+            WeeklyEventManager.shared.refresh()
         }
     }
     

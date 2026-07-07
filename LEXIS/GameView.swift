@@ -80,6 +80,8 @@ struct GameView: View {
                         Group {
                             if model.isDuelMode, let duel = model.duelResult {
                                 DuelResultView(code: duel.code, score: duel.score, phase: $model.phase)
+                            } else if model.isWeeklyMode, let wr = model.weeklyResult {
+                                WeeklyResultView(score: wr.score, survived: wr.survived, phase: $model.phase)
                             } else if model.isDailyMode, let result = model.dailyManager.todayResult {
                                 DailyResultView(result: result, streak: model.dailyManager.currentStreak)
                                     .onDisappear {
@@ -1828,6 +1830,7 @@ struct MenuView: View {
     @ObservedObject private var gameCenter = GameCenterManager.shared
     @ObservedObject private var dailyManager = DailyChallengeManager.shared
     @ObservedObject private var goalsManager = GoalsManager.shared
+    @ObservedObject private var weekly = WeeklyEventManager.shared
     @State private var logoScale: CGFloat = 0.8
     @State private var logoGlow = false
     @State private var showDailyResults = false
@@ -1889,6 +1892,39 @@ struct MenuView: View {
         }
         .coordinateSpace(name: "menu")
         .onPreferenceChange(TitleFramePreferenceKey.self) { logoFrame = $0 }
+    }
+
+    // A compact "compete" tile used by the Weekly and Duel entries in the
+    // 2-up row, so both fit on one line without growing the menu vertically.
+    private func modeMiniCard(icon: String, tint: Color, title: String, subtitle: String) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle().fill(tint.opacity(0.15)).frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(tint)
+            }
+            VStack(spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundColor(.lexisText)
+                    .tracking(1)
+                Text(subtitle)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(.lexisMid)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                .fill(tint.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+                        .strokeBorder(tint.opacity(0.3), lineWidth: 1.5)
+                )
+        )
     }
 
     private var menuContent: some View {
@@ -2093,49 +2129,36 @@ struct MenuView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
 
-            // Duel — async head-to-head using the same seeded-sequence
-            // machinery as Daily Challenge, just keyed by a shareable code
-            // instead of today's date.
-            Button {
-                showDuelSetup = true
-            } label: {
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.lexisAccent.opacity(0.15))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.lexisAccent)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("DUEL A FRIEND")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                            .foregroundColor(.lexisText)
-                            .tracking(1)
-                        Text("Same letters, compare scores")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.lexisMid)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.lexisMid)
+            // Weekly event + Duel, as a 2-up row of compact "compete" cards.
+            // Weekly (R5) is a recurring seeded event with a shared leaderboard
+            // and coin rewards; Duel is the async head-to-head.
+            HStack(spacing: 12) {
+                // Weekly / Weekend event
+                Button {
+                    model.startWeeklyEvent()
+                } label: {
+                    modeMiniCard(
+                        icon: weekly.event.isWeekend ? "bolt.fill" : "trophy.fill",
+                        tint: weekly.event.isWeekend ? .lexisGold : .lexisAccent,
+                        title: weekly.event.isWeekend ? "WEEKEND" : "WEEKLY",
+                        subtitle: weekly.hasPlayed ? "Best \(weekly.bestScore)" : "Tap to play"
+                    )
                 }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-                        .fill(Color.lexisAccent.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
-                                .strokeBorder(Color.lexisAccent.opacity(0.3), lineWidth: 1.5)
-                        )
-                )
+                .buttonStyle(LexisScaleButtonStyle())
+
+                // Duel
+                Button {
+                    showDuelSetup = true
+                } label: {
+                    modeMiniCard(
+                        icon: "person.2.fill",
+                        tint: .lexisMid,
+                        title: "DUEL",
+                        subtitle: "Challenge a friend"
+                    )
+                }
+                .buttonStyle(LexisScaleButtonStyle())
             }
-            .buttonStyle(LexisScaleButtonStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             .sheet(isPresented: $showDuelSetup) {

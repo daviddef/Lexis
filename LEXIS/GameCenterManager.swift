@@ -23,6 +23,11 @@ class GameCenterManager: NSObject, ObservableObject {
         case rapid = "lexis_leaderboard_rapid"
         case insane = "lexis_leaderboard_insane"
         case daily = "lexis_leaderboard_daily"
+        // Weekly event (R5). A recurring leaderboard board in App Store
+        // Connect — set to reset weekly there, or leave all-time and rely on
+        // the client's per-event best. NOTE: must be created in App Store
+        // Connect (id below) before scores post; submits no-op safely if not.
+        case weekly = "lexis_leaderboard_weekly"
 
         static func from(_ difficulty: Difficulty) -> LeaderboardID {
             switch difficulty {
@@ -87,6 +92,14 @@ class GameCenterManager: NSObject, ObservableObject {
     // comparison.
     func submitDailyScore(_ score: Int) {
         submitScore(score, to: .daily)
+    }
+
+    func submitWeeklyScore(_ score: Int) {
+        submitScore(score, to: .weekly)
+    }
+
+    func showWeeklyLeaderboard(friendsOnly: Bool = false) {
+        presentLeaderboard(id: .weekly, timeScope: .allTime, friendsOnly: friendsOnly)
     }
 
     private func submitScore(_ score: Int, to leaderboard: LeaderboardID) {

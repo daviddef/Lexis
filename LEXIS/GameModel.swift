@@ -495,10 +495,14 @@ class GameModel: ObservableObject {
     @Published var isDuelMode: Bool = false
     @Published var duelCode: String = ""
     @Published var duelResult: (code: String, score: Int, wordsFound: [String])? = nil
-    // True for either fixed-sequence mode — used wherever the gating is
+    // Weekly event (R5) — a third fixed-sequence mode, seeded by the current
+    // week rather than the date or a code. Its result is a simple score.
+    @Published var isWeeklyMode: Bool = false
+    @Published var weeklyResult: (score: Int, survived: Bool)? = nil
+    // True for any fixed-sequence mode — used wherever the gating is
     // "no power-ups / fixed pace because everyone must face identical
-    // letters," which applies the same way to both Daily and Duel.
-    private var isSequenceMode: Bool { isDailyMode || isDuelMode }
+    // letters," which applies the same way to Daily, Duel, and Weekly.
+    private var isSequenceMode: Bool { isDailyMode || isDuelMode || isWeeklyMode }
 
     let settings = GameSettings.shared
     let dailyManager = DailyChallengeManager.shared
@@ -565,6 +569,7 @@ class GameModel: ObservableObject {
         lastWordResult = nil
         isDailyMode = false
         isDuelMode = false
+        isWeeklyMode = false
         highScore = settings.highScore(for: settings.difficulty)
         refillBag()
 
@@ -615,6 +620,7 @@ class GameModel: ObservableObject {
         lastWordResult = nil
         isDailyMode = true
         isDuelMode = false
+        isWeeklyMode = false
         isTutorialActive = false
         tutorialLetterQueue = []
         dailySequence = dailyManager.todaysLetterSequence()
@@ -652,6 +658,7 @@ class GameModel: ObservableObject {
         lastWordResult = nil
         isDailyMode = false
         isDuelMode = true
+        isWeeklyMode = false
         isTutorialActive = false
         tutorialLetterQueue = []
         duelCode = code
@@ -677,6 +684,63 @@ class GameModel: ObservableObject {
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
         GoalsManager.shared.onRunEnded(score: score)
         PlayerProfile.shared.addXP(score / 20)
+        if survived {
+            Haptics.success()
+        } else {
+            Haptics.error()
+            SoundManager.gameOver()
+        }
+    }
+
+    // MARK: - Weekly event
+    // A third fixed-sequence mode, seeded by the current ISO week (see
+    // WeeklyEventManager). Reuses the Daily/Duel sequence plumbing verbatim;
+    // only the seed source and the completion handler differ.
+    func startWeeklyEvent() {
+        let event = WeeklyEventManager.shared.event
+        grid = Array(repeating: Array(repeating: nil, count: GameConstants.cols), count: GameConstants.rows)
+        score = 0
+        level = 1
+        comboCount = 0
+        lastComboBlockCount = 0
+        blocksDropped = 0
+        bombsAvailable = 0
+        tipsAvailable = 0
+        utilityCharges = 0
+        isFrozen = false
+        peekLetters = []
+        foundWords = []
+        pendingWords = []
+        lastWordResult = nil
+        isDailyMode = false
+        isDuelMode = false
+        isWeeklyMode = true
+        isTutorialActive = false
+        tutorialLetterQueue = []
+        weeklyResult = nil
+        dailySequence = dailyManager.sequence(for: event.seed)
+        dailySequenceIndex = 0
+        dailyWordsFoundList = []
+        dailyLettersRemaining = dailySequence.count
+        spawnNewLetter()
+        phase = .playing
+        startDropTimer()
+        gameStartDate = Date()
+        Analytics.shared.gameStart(mode: "weekly", difficulty: settings.difficulty.rawValue)
+        GoalsManager.shared.onRunStarted()
+    }
+
+    private func completeWeekly(survived: Bool) {
+        dropTimer?.invalidate()
+        weeklyResult = (score: score, survived: survived)
+        WeeklyEventManager.shared.recordResult(score: score)
+        phase = .gameOver
+        Analytics.shared.gameOver(mode: "weekly", difficulty: settings.difficulty.rawValue,
+                                  score: score, level: level, words: dailyWordsFoundList.count,
+                                  durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
+        GoalsManager.shared.onRunEnded(score: score)
+        PlayerProfile.shared.addXP(score / 20 + (survived ? 50 : 0))
+        CosmeticsStore.shared.checkMilestoneUnlocks()
         if survived {
             Haptics.success()
         } else {
@@ -717,6 +781,8 @@ class GameModel: ObservableObject {
             if dailySequenceIndex >= dailySequence.count {
                 if isDuelMode {
                     completeDuel(survived: true)
+                } else if isWeeklyMode {
+                    completeWeekly(survived: true)
                 } else {
                     completeDailyChallenge(survived: true)
                 }
@@ -756,6 +822,8 @@ class GameModel: ObservableObject {
                 completeDuel(survived: false)
             } else if isDailyMode {
                 completeDailyChallenge(survived: false)
+            } else if isWeeklyMode {
+                completeWeekly(survived: false)
             } else {
                 triggerGameOver()
             }
