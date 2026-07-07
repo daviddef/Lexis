@@ -64,6 +64,9 @@ final class PlayerProfile: ObservableObject {
         let after = level
         if after > before {
             pendingLevelUp = after
+            // Each level banks coins toward the collection — the level-up
+            // moment pays out, not just increments a number.
+            addCoins(25 * (after - before))
             Analytics.shared.track(.init("level_up", ["level": "\(after)"]))
         }
     }

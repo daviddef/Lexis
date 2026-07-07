@@ -44,6 +44,7 @@ struct ProgressSheet: View {
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var goals = GoalsManager.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var showCollection = false
 
     var body: some View {
         ZStack {
@@ -99,11 +100,38 @@ struct ProgressSheet: View {
                     .padding(18)
                     .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.lexisBlock.opacity(0.6)))
 
+                    // Collection entry
+                    Button { showCollection = true } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle().fill(Color.lexisAccent.opacity(0.15)).frame(width: 44, height: 44)
+                                Image(systemName: "square.grid.2x2.fill")
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundColor(.lexisAccent)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("COLLECTION")
+                                    .font(.system(size: 14, weight: .black, design: .rounded))
+                                    .foregroundColor(.lexisText).tracking(1)
+                                Text("Spend coins on new tile themes")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.lexisMid)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold)).foregroundColor(.lexisMid)
+                        }
+                        .padding(16)
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.lexisBlock.opacity(0.6)))
+                    }
+                    .buttonStyle(LexisScaleButtonStyle())
+
                     Spacer(minLength: 8)
                 }
                 .padding(20)
             }
         }
+        .sheet(isPresented: $showCollection) { CollectionView() }
     }
 
     private var header: some View {
@@ -193,6 +221,156 @@ struct GoalRow: View {
         case .scoreInRun: return "star.fill"
         case .playDaily: return "calendar"
         }
+    }
+}
+
+// MARK: - Collection (R4)
+
+/// A small static tile in a theme's colours, with the same bevel as the
+/// in-game tiles, used as the preview swatch in the collection.
+struct ThemeSwatch: View {
+    let theme: TileTheme
+    var size: CGFloat = 56
+    var letter: String = "A"
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                .fill(LinearGradient(colors: [theme.topColor, theme.bottomColor],
+                                     startPoint: .top, endPoint: .bottom))
+            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5)
+                .offset(x: -0.5, y: -0.5)
+            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.3), lineWidth: 1.5)
+                .offset(x: 0.5, y: 0.5)
+            Text(letter)
+                .font(.system(size: size * 0.5, weight: .black, design: .rounded))
+                .foregroundColor(.lexisText)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: .black.opacity(0.4), radius: 5, y: 2)
+    }
+}
+
+/// The collection: browse every tile theme, buy locked ones with coins, and
+/// equip anything owned. The catalogue R6's real-money shop will also sell.
+struct CollectionView: View {
+    @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var profile = PlayerProfile.shared
+    @ObservedObject private var store = CosmeticsStore.shared
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
+
+    var body: some View {
+        ZStack {
+            Color.lexisBg.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 18) {
+                    HStack {
+                        Text("Collection")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(.lexisText)
+                        Spacer()
+                        HStack(spacing: 5) {
+                            Image(systemName: "circle.hexagongrid.fill")
+                            Text("\(profile.coins)")
+                        }
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundColor(.lexisGold)
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.lexisMid)
+                                .frame(width: 36, height: 36)
+                                .background(Color.lexisBlock.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                    }
+
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(TileTheme.allCases) { theme in
+                            ThemeCard(theme: theme)
+                        }
+                    }
+                }
+                .padding(20)
+            }
+        }
+    }
+}
+
+struct ThemeCard: View {
+    let theme: TileTheme
+    @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var profile = PlayerProfile.shared
+    @ObservedObject private var store = CosmeticsStore.shared
+
+    private var unlocked: Bool { theme.isUnlocked }
+    private var equipped: Bool { settings.tileTheme == theme }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ThemeSwatch(theme: theme, size: 58, letter: String(theme.rawValue.prefix(1)))
+                .padding(.top, 4)
+            Text(theme.rawValue)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundColor(.lexisText)
+            action
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.lexisBlock.opacity(0.6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(equipped ? Color.lexisAccent : Color.clear, lineWidth: 2)
+                )
+        )
+    }
+
+    @ViewBuilder private var action: some View {
+        if equipped {
+            label("EQUIPPED", color: .lexisAccent, filled: true)
+        } else if unlocked {
+            Button {
+                settings.tileTheme = theme
+                Haptics.light()
+            } label: { label("EQUIP", color: .lexisAccent, filled: false) }
+        } else if theme.isBuyOnly || theme.milestoneMet == false {
+            // Locked: buyable with coins, or (for milestone themes) show the
+            // milestone but still allow buying past it.
+            Button {
+                if store.buyWithCoins(theme) {
+                    settings.tileTheme = theme  // equip immediately
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "circle.hexagongrid.fill").font(.system(size: 11, weight: .bold))
+                    Text("\(theme.coinPrice)").font(.system(size: 13, weight: .black, design: .rounded))
+                }
+                .foregroundColor(profile.canAfford(theme.coinPrice) ? .lexisBg : .lexisMid)
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .background(Capsule().fill(profile.canAfford(theme.coinPrice) ? Color.lexisGold : Color.lexisBlockBorder.opacity(0.4)))
+            }
+            .disabled(!profile.canAfford(theme.coinPrice))
+            if !theme.isBuyOnly {
+                Text(theme.unlockDescription)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundColor(.lexisMid).multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    private func label(_ text: String, color: Color, filled: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .black, design: .rounded))
+            .foregroundColor(filled ? .lexisBg : color)
+            .padding(.horizontal, 14).padding(.vertical, 7)
+            .background(Capsule().fill(filled ? color : color.opacity(0.15)))
     }
 }
 

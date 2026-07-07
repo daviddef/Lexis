@@ -24,6 +24,7 @@ struct GameView: View {
     @ObservedObject private var notifications = NotificationManager.shared
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var goals = GoalsManager.shared
+    @ObservedObject private var cosmetics = CosmeticsStore.shared
     @State private var celebration: CelebrationItem?
     @State private var showWildcardPicker = false
     @State private var selectedTiles: [(row: Int, col: Int)] = []
@@ -114,8 +115,14 @@ struct GameView: View {
                 .onChange(of: profile.pendingLevelUp) { _, lvl in
                     guard let lvl else { return }
                     showCelebration(CelebrationItem(icon: "arrow.up.circle.fill", tint: .lexisAccent,
-                        title: "Level \(lvl)!", subtitle: "You leveled up"))
+                        title: "Level \(lvl)!", subtitle: "You leveled up  ·  +25 coins"))
                     profile.pendingLevelUp = nil
+                }
+                .onChange(of: cosmetics.justUnlocked) { _, theme in
+                    guard let theme else { return }
+                    showCelebration(CelebrationItem(icon: "paintpalette.fill", tint: .lexisGold,
+                        title: "\(theme.rawValue) theme unlocked!", subtitle: "Equip it in your Collection"))
+                    cosmetics.justUnlocked = nil
                 }
 
                 // Celebration banner overlay

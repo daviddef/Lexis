@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0812DFB0A2BF5713E4152A70 /* CosmeticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ABC1D336958A957F66B201E /* CosmeticsStore.swift */; };
 		1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4004408499B751AFCEEFF955 /* SoundManager.swift */; };
 		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
 		2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */; };
@@ -62,6 +63,7 @@
 		558A47F9FA6805DCB595B6AC /* ProgressionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionView.swift; sourceTree = "<group>"; };
 		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
+		6ABC1D336958A957F66B201E /* CosmeticsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosmeticsStore.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
 		7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		8A89042EB531104FA876E293 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
@@ -94,6 +96,7 @@
 			children = (
 				9BCA92EFAF6939161B4B302F /* Analytics.swift */,
 				C1397824B81287256A25848F /* Assets.xcassets */,
+				6ABC1D336958A957F66B201E /* CosmeticsStore.swift */,
 				35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */,
 				8A89042EB531104FA876E293 /* DesignSystem.swift */,
 				58CFDE30095075626DBA2E44 /* GameCenterManager.swift */,
@@ -249,6 +252,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				58E8A642B2F1780A790EE1DE /* Analytics.swift in Sources */,
+				0812DFB0A2BF5713E4152A70 /* CosmeticsStore.swift in Sources */,
 				A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */,
 				BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */,
 				5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */,

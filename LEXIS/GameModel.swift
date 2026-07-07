@@ -813,6 +813,7 @@ class GameModel: ObservableObject {
         Analytics.shared.dailyComplete(survived: survived, score: score, streak: dailyManager.currentStreak)
         GoalsManager.shared.onRunEnded(score: score)
         PlayerProfile.shared.addXP(score / 20 + (survived ? 50 : 0))
+        CosmeticsStore.shared.checkMilestoneUnlocks()
         // The first daily result is the natural moment to ask for notification
         // permission — the value ("come back tomorrow, keep your streak") is
         // now self-evident. After any daily result, re-lay the schedule so the
@@ -1696,6 +1697,7 @@ class GameModel: ObservableObject {
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)))
         GoalsManager.shared.onRunEnded(score: score)
         PlayerProfile.shared.addXP(score / 20)
+        CosmeticsStore.shared.checkMilestoneUnlocks()
     }
 
     // A Wordle-style recap for an Endless run — DailyChallengeManager

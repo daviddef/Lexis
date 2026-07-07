@@ -17,6 +17,9 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
     case ocean = "Ocean"
     case violet = "Violet"
     case gold = "Gold"
+    case forest = "Forest"
+    case rose = "Rose"
+    case mono = "Mono"
 
     var id: String { rawValue }
 
@@ -27,6 +30,9 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
         case .ocean: return Color(red: 0.14, green: 0.32, blue: 0.42)
         case .violet: return Color(red: 0.33, green: 0.22, blue: 0.46)
         case .gold: return Color(red: 0.44, green: 0.37, blue: 0.14)
+        case .forest: return Color(red: 0.16, green: 0.34, blue: 0.22)
+        case .rose: return Color(red: 0.44, green: 0.20, blue: 0.30)
+        case .mono: return Color(red: 0.30, green: 0.32, blue: 0.36)
         }
     }
 
@@ -37,6 +43,9 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
         case .ocean: return Color(red: 0.04, green: 0.12, blue: 0.18)
         case .violet: return Color(red: 0.12, green: 0.06, blue: 0.19)
         case .gold: return Color(red: 0.16, green: 0.13, blue: 0.03)
+        case .forest: return Color(red: 0.04, green: 0.13, blue: 0.08)
+        case .rose: return Color(red: 0.18, green: 0.05, blue: 0.10)
+        case .mono: return Color(red: 0.08, green: 0.09, blue: 0.11)
         }
     }
 
@@ -56,6 +65,33 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
         case .ocean: return Color(red: 0.3, green: 0.75, blue: 0.95)
         case .violet: return Color(red: 0.75, green: 0.4, blue: 0.95)
         case .gold: return Color(red: 0.72, green: 0.42, blue: 0.06)
+        case .forest: return Color(red: 0.30, green: 0.85, blue: 0.45)
+        case .rose: return Color(red: 1.0, green: 0.42, blue: 0.62)
+        case .mono: return Color(red: 0.70, green: 0.75, blue: 0.85)
+        }
+    }
+
+    // Coins to buy this theme outright from the collection, as an alternative
+    // to reaching its milestone. The three newest themes are buy-only (no
+    // milestone), so they exist purely as a coin sink for the economy.
+    var coinPrice: Int {
+        switch self {
+        case .classic: return 0
+        case .sunset: return 150
+        case .violet: return 250
+        case .ocean: return 300
+        case .forest: return 250
+        case .rose: return 250
+        case .mono: return 400
+        case .gold: return 500
+        }
+    }
+
+    /// True when this theme has no milestone and can only be bought with coins.
+    var isBuyOnly: Bool {
+        switch self {
+        case .forest, .rose, .mono: return true
+        default: return false
         }
     }
 
@@ -66,14 +102,15 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
         case .ocean: return "Find 100 words total"
         case .violet: return "Reach a 3-day daily streak"
         case .gold: return "Score 10,000 in a single run"
+        case .forest, .rose, .mono: return "Unlock in the Collection"
         }
     }
 
-    // Reads main-actor singletons (DailyChallengeManager / GameSettings), so
-    // this member is main-actor isolated while the rest of the enum stays
-    // nonisolated. Callers are all UI (already on the main actor).
+    /// Whether this theme's MILESTONE (not coin purchase) has been reached.
+    /// Kept separate from `isUnlocked` so the collection can show "earned via
+    /// milestone" vs "bought" and so buy-only themes never auto-unlock.
     @MainActor
-    var isUnlocked: Bool {
+    var milestoneMet: Bool {
         switch self {
         case .classic:
             return true
@@ -85,6 +122,16 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
             return DailyChallengeManager.shared.bestStreak >= 3
         case .gold:
             return (GameSettings.shared.allTimeScores().first?.score ?? 0) >= 10_000
+        case .forest, .rose, .mono:
+            return false
         }
+    }
+
+    // Reads main-actor singletons, so this member is main-actor isolated while
+    // the rest of the enum stays nonisolated. Callers are all UI. A theme is
+    // available if its milestone is met OR it's been bought with coins.
+    @MainActor
+    var isUnlocked: Bool {
+        milestoneMet || CosmeticsStore.shared.isPurchased(self)
     }
 }
