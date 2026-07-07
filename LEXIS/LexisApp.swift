@@ -20,6 +20,9 @@ struct LexisApp: App {
             GoalsManager.shared.loadOrGenerate()
             // Roll the weekly event forward if the week/weekend flavour changed.
             WeeklyEventManager.shared.refresh()
+            // StoreKit: begin the transaction listener + load products (no-op
+            // until App Store Connect products exist).
+            StoreManager.shared.start()
         }
     }
     

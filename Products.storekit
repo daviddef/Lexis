@@ -1,0 +1,106 @@
+{
+  "identifier" : "LEXIS-StoreKit-Config",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1000",
+      "localizations" : [
+        {
+          "description" : "Unlock every tile theme — now and forever — and support LEXIS.",
+          "displayName" : "LEXIS Supporter",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.daviddefranceski.lexis.supporter",
+      "referenceName" : "LEXIS Supporter",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1001",
+      "localizations" : [
+        { "description" : "A deep-green Forest tile theme.", "displayName" : "Forest Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.forest",
+      "referenceName" : "Forest Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1002",
+      "localizations" : [
+        { "description" : "A warm Rose tile theme.", "displayName" : "Rose Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.rose",
+      "referenceName" : "Rose Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1003",
+      "localizations" : [
+        { "description" : "A monochrome Mono tile theme.", "displayName" : "Mono Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.mono",
+      "referenceName" : "Mono Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1004",
+      "localizations" : [
+        { "description" : "A warm Sunset tile theme.", "displayName" : "Sunset Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.sunset",
+      "referenceName" : "Sunset Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1005",
+      "localizations" : [
+        { "description" : "A cool Ocean tile theme.", "displayName" : "Ocean Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.ocean",
+      "referenceName" : "Ocean Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1006",
+      "localizations" : [
+        { "description" : "A rich Violet tile theme.", "displayName" : "Violet Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.violet",
+      "referenceName" : "Violet Theme",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "1007",
+      "localizations" : [
+        { "description" : "A luxe Gold tile theme.", "displayName" : "Gold Theme", "locale" : "en_US" }
+      ],
+      "productID" : "com.daviddefranceski.lexis.theme.gold",
+      "referenceName" : "Gold Theme",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

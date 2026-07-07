@@ -259,6 +259,7 @@ struct CollectionView: View {
     @ObservedObject private var settings = GameSettings.shared
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var store = CosmeticsStore.shared
+    @ObservedObject private var shop = StoreManager.shared
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
@@ -289,14 +290,74 @@ struct CollectionView: View {
                         }
                     }
 
+                    supporterBanner
+
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(TileTheme.allCases) { theme in
                             ThemeCard(theme: theme)
                         }
                     }
+
+                    // Restore only matters once real IAP exists.
+                    if shop.supporterProduct != nil {
+                        Button { Task { await shop.restore() } } label: {
+                            Text("Restore Purchases")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(.lexisMid)
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 .padding(20)
             }
+        }
+    }
+
+    // The headline IAP: unlock every theme forever. Only shown when the
+    // product actually loaded (App Store Connect configured) and isn't owned,
+    // so an unconfigured build shows no dangling shop UI.
+    @ViewBuilder private var supporterBanner: some View {
+        if let product = shop.supporterProduct, !shop.supporterOwned {
+            Button { Task { await shop.purchase(product) } } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle().fill(Color.lexisGold.opacity(0.18)).frame(width: 46, height: 46)
+                        Image(systemName: "crown.fill").font(.system(size: 19, weight: .black)).foregroundColor(.lexisGold)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LEXIS SUPPORTER")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundColor(.lexisText).tracking(1)
+                        Text("Unlock every theme — forever")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.lexisMid)
+                    }
+                    Spacer()
+                    Text(shop.purchasing == product.id ? "…" : product.displayPrice)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(.lexisBg)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Capsule().fill(Color.lexisGold))
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.lexisGold.opacity(0.1))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.lexisGold.opacity(0.4), lineWidth: 1.5))
+                )
+            }
+            .buttonStyle(LexisScaleButtonStyle())
+        } else if shop.supporterOwned {
+            HStack(spacing: 10) {
+                Image(systemName: "crown.fill").foregroundColor(.lexisGold)
+                Text("Supporter — thank you! 💛")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.lexisText)
+                Spacer()
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.lexisGold.opacity(0.1)))
         }
     }
 }
@@ -306,6 +367,7 @@ struct ThemeCard: View {
     @ObservedObject private var settings = GameSettings.shared
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var store = CosmeticsStore.shared
+    @ObservedObject private var shop = StoreManager.shared
 
     private var unlocked: Bool { theme.isUnlocked }
     private var equipped: Bool { settings.tileTheme == theme }
@@ -357,6 +419,16 @@ struct ThemeCard: View {
                 .background(Capsule().fill(profile.canAfford(theme.coinPrice) ? Color.lexisGold : Color.lexisBlockBorder.opacity(0.4)))
             }
             .disabled(!profile.canAfford(theme.coinPrice))
+            // Real-money option, shown only when the IAP product is configured.
+            if let product = shop.product(for: theme) {
+                Button { Task { await shop.purchase(product) } } label: {
+                    Text(shop.purchasing == product.id ? "…" : product.displayPrice)
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundColor(.lexisAccent)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Capsule().strokeBorder(Color.lexisAccent.opacity(0.5), lineWidth: 1.5))
+                }
+            }
             if !theme.isBuyOnly {
                 Text(theme.unlockDescription)
                     .font(.system(size: 10, weight: .semibold, design: .rounded))

@@ -27,6 +27,7 @@
 		AAA64D6785B01FEE8144A1E5 /* WeeklyEventViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60955C1DCA414344FD85AE91 /* WeeklyEventViews.swift */; };
 		AEC5B9F55A6FBE483A6F507B /* MetricKitReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8985306D4952468BB2F52A /* MetricKitReporter.swift */; };
 		BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A89042EB531104FA876E293 /* DesignSystem.swift */; };
+		DADFF24D69CEADBC1DA42519 /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BBF4DB5779C7308B5EF0D72 /* StoreManager.swift */; };
 		E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558A47F9FA6805DCB595B6AC /* ProgressionView.swift */; };
 		E843E560313C70E8938C9444 /* WeeklyEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */; };
 		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -58,6 +59,7 @@
 
 /* Begin PBXFileReference section */
 		11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileTheme.swift; sourceTree = "<group>"; };
+		1BBF4DB5779C7308B5EF0D72 /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
 		3447805539796661F1B3F20A /* LexisWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidgetBundle.swift; sourceTree = "<group>"; };
 		35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyChallengeManager.swift; sourceTree = "<group>"; };
 		3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyEventManager.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 				558A47F9FA6805DCB595B6AC /* ProgressionView.swift */,
 				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
 				4004408499B751AFCEEFF955 /* SoundManager.swift */,
+				1BBF4DB5779C7308B5EF0D72 /* StoreManager.swift */,
 				11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */,
 				3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */,
 				60955C1DCA414344FD85AE91 /* WeeklyEventViews.swift */,
@@ -272,6 +275,7 @@
 				E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */,
 				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
 				1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */,
+				DADFF24D69CEADBC1DA42519 /* StoreManager.swift in Sources */,
 				55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */,
 				E843E560313C70E8938C9444 /* WeeklyEventManager.swift in Sources */,
 				AAA64D6785B01FEE8144A1E5 /* WeeklyEventViews.swift in Sources */,
