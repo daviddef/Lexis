@@ -169,6 +169,13 @@ class GameSettings: ObservableObject {
     @Published var largeText: Bool {
         didSet { UserDefaults.standard.set(largeText, forKey: "lexisLargeText") }
     }
+    // User-facing "Reduce Motion" toggle. The effective state (see
+    // `motionReduced`) is this OR the system-wide accessibility setting, so a
+    // player who's turned it on system-wide gets the calm experience without
+    // touching our toggle, while anyone can also opt in just for LEXIS.
+    @Published var reduceMotion: Bool {
+        didSet { UserDefaults.standard.set(reduceMotion, forKey: "lexisReduceMotion") }
+    }
     @Published var tileTheme: TileTheme {
         didSet { UserDefaults.standard.set(tileTheme.rawValue, forKey: "lexisTileTheme") }
     }
@@ -184,9 +191,34 @@ class GameSettings: ObservableObject {
         self.colorBlindMode = UserDefaults.standard.object(forKey: "lexisColorBlind") as? Bool ?? false
         self.showGhostPiece = UserDefaults.standard.object(forKey: "lexisGhost") as? Bool ?? true
         self.largeText = UserDefaults.standard.object(forKey: "lexisLargeText") as? Bool ?? false
+        self.reduceMotion = UserDefaults.standard.object(forKey: "lexisReduceMotion") as? Bool ?? false
         let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
         self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
+
+        // Republish when the SYSTEM reduce-motion setting flips mid-session so
+        // views recompute `motionReduced` live. Our own toggle already drives
+        // @Published updates.
+        #if canImport(UIKit)
+        NotificationCenter.default.addObserver(
+            forName: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.objectWillChange.send() }
+        }
+        #endif
+    }
+
+    /// Effective "reduce motion" state: the player's in-app toggle OR the
+    /// system-wide accessibility setting. All decorative/ambient animation
+    /// added in the UI-uplift roadmap checks this and either freezes on a
+    /// static frame or drops to an instant, non-animated state change.
+    var motionReduced: Bool {
+        #if canImport(UIKit)
+        return reduceMotion || UIAccessibility.isReduceMotionEnabled
+        #else
+        return reduceMotion
+        #endif
     }
 
     func highScore(for difficulty: Difficulty) -> Int {

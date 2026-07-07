@@ -142,6 +142,13 @@ struct SettingsView: View {
                                     subtitle: "Bigger letters on every tile",
                                     isOn: $settings.largeText
                                 )
+                                Divider().background(Color.lexisBlockBorder.opacity(0.2))
+                                ToggleRow(
+                                    icon: "wind",
+                                    title: "Reduce Motion",
+                                    subtitle: "Calms drifting, gliding & burst effects",
+                                    isOn: $settings.reduceMotion
+                                )
                             }
                             .padding(.vertical, 6)
                             .padding(.horizontal, 16)

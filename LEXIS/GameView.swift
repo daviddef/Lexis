@@ -104,6 +104,9 @@ struct GameView: View {
                     .allowsHitTesting(false)
                     .ignoresSafeArea()
                     .onAppear {
+                        // Reduce Motion: hold a steady danger tint (still
+                        // clearly readable as danger) instead of pulsing.
+                        guard !settings.motionReduced else { return }
                         withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
                             dangerVignettePulse = true
                         }
@@ -692,8 +695,11 @@ struct PlayingView: View {
                             x: CGFloat(model.fallingCol) * step + tileSize / 2,
                             y: CGFloat(model.fallingRow) * step + tileSize / 2
                         )
-                        .animation(.linear(duration: max(0.05, model.currentDropInterval)), value: model.fallingRow)
-                        .animation(.easeOut(duration: 0.08), value: model.fallingCol)
+                        // Reduce Motion: no glide — the piece snaps cleanly
+                        // from cell to cell (the pre-glide behavior) rather
+                        // than continuously sliding.
+                        .animation(model.settings.motionReduced ? nil : .linear(duration: max(0.05, model.currentDropInterval)), value: model.fallingRow)
+                        .animation(model.settings.motionReduced ? nil : .easeOut(duration: 0.08), value: model.fallingCol)
                         .id(model.fallingPieceID)
                     }
                     .frame(
@@ -1161,6 +1167,10 @@ struct PlayingView: View {
     // the model still removes the tiles on its own schedule; this just plays
     // over the top so the clear feels physical.
     func spawnShatter(for result: WordResult) {
+        // Reduce Motion: skip the flung-shard burst entirely — the tiles
+        // simply clear. The score readout still appears (statically) so the
+        // player never loses the "what did I score" feedback.
+        guard !model.settings.motionReduced else { return }
         let color: Color = result.isChain ? .lexisCombo : (result.word.count >= 6 ? .lexisGold : .yellow)
         let bursts = result.tiles.map { ClearShardBurst(row: $0.row, col: $0.col, color: color) }
         shardBursts.append(contentsOf: bursts)
@@ -1178,8 +1188,19 @@ struct PlayingView: View {
         // this clear's drift begins, so a rapid combo doesn't visibly yank
         // the previous flash back down.
         wordFlashRise = false
-        wordBurst = true
 
+        // Reduce Motion: still show the word + score (it's real feedback), but
+        // as a plain fade — no pop-scale, no upward drift.
+        if model.settings.motionReduced {
+            wordBurst = false
+            withAnimation(.easeInOut(duration: 0.2)) { wordFlashOpacity = 1 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                withAnimation(.easeOut(duration: 0.3)) { wordFlashOpacity = 0 }
+            }
+            return
+        }
+
+        wordBurst = true
         withAnimation(.spring(response: 0.18, dampingFraction: 0.6)) {
             wordFlashOpacity = 1
         }
@@ -1454,6 +1475,9 @@ struct TileView: View {
         }
         .onChange(of: justLanded) { _, landed in
             guard landed else { return }
+            // Reduce Motion: skip the squash-and-settle bounce; the tile just
+            // appears in place.
+            guard !GameSettings.shared.motionReduced else { return }
             landSquash = true
             withAnimation(.spring(response: 0.34, dampingFraction: 0.45)) {
                 landSquash = false
@@ -1762,7 +1786,7 @@ struct MenuView: View {
             // Ambient parallax field of faint drifting letters — the backmost
             // decorative layer, giving the menu depth and life beneath the
             // sharper logo rain and content.
-            AmbientDriftLayer()
+            AmbientDriftLayer(animate: !settings.motionReduced)
 
             // Falling-letter rain spelling LEXIS, as a background layer
             // behind the menu content. It begins at the measured "LEXIS"
@@ -1771,7 +1795,9 @@ struct MenuView: View {
             // its letters rather than an unrelated rain starting in blank
             // space below it.
             GeometryReader { geo in
-                if logoFrame != .zero {
+                // Reduce Motion hides the falling-letter rain entirely — it's
+                // decorative and unavoidably motion.
+                if logoFrame != .zero && !settings.motionReduced {
                     ZStack {
                         ForEach(0..<demoTiles.count, id: \.self) { i in
                             // Center of this letter within the wordmark:
@@ -1874,6 +1900,13 @@ struct MenuView: View {
                     .tracking(2)
             }
             .onAppear {
+                // Reduce Motion: no spring-in, no breathing glow — the logo
+                // just sits at full size and a steady glow.
+                guard !settings.motionReduced else {
+                    logoScale = 1
+                    logoGlow = true
+                    return
+                }
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
                     logoScale = 1
                 }
@@ -1891,7 +1924,7 @@ struct MenuView: View {
                 // so a new player sees the 8-way reading before hitting the
                 // confusing "wait, why is that a word?" moment in-game.
                 HStack(spacing: 14) {
-                    DirectionReadingCue()
+                    DirectionReadingCue(animate: !settings.motionReduced)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("WORDS READ 8 WAYS")
                             .font(.system(size: 13, weight: .black, design: .rounded))
