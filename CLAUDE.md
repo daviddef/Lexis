@@ -102,13 +102,24 @@ config work:
 
 | File | Responsibility |
 |---|---|
-| `LexisApp.swift` | App entry point, Game Center auth kickoff |
-| `GameModel.swift` | Core game engine: grid state, word detection (left-to-right horizontal only, both directions vertical), scoring, difficulty tiers, settings, sticking mechanic, Tip mechanic, soft-drop, haptics, the dictionary loader, top-scores leaderboard |
-| `GameView.swift` | All SwiftUI views: menu/splash (high score + all difficulties + play), playing board, tile rendering with bevel/shadow depth, game over, daily result screen, top scores leaderboard, share sheet |
-| `SettingsView.swift` | Settings screen + difficulty picker sheet |
+| `LexisApp.swift` | App entry point; on launch runs `DataMigration`, Game Center auth, analytics, MetricKit, notification + goals + weekly + StoreKit setup |
+| `GameModel.swift` | Core game engine: grid state, word detection (left-to-right horizontal only, both directions vertical), scoring, difficulty tiers, settings, sticking mechanic, Tip mechanic, soft-drop, haptics, the dictionary loader, top-scores leaderboard. Also the three fixed-sequence modes (Daily, Duel, Weekly) |
+| `GameView.swift` | All SwiftUI views: menu/splash, playing board, tile rendering, game over, daily/duel/weekly result screens, share sheet, celebration toasts |
+| `SettingsView.swift` | Settings screen + difficulty picker + notification controls |
 | `DailyChallengeManager.swift` | Daily Challenge mode: date-seeded deterministic letter sequence, streaks, share card generation |
-| `GameCenterManager.swift` | Game Center leaderboards (per-difficulty) and achievements |
+| `GameCenterManager.swift` | Game Center leaderboards (per-difficulty, daily, weekly) and achievements |
 | `LaunchScreenView.swift` | Static launch-screen view (see Xcode setup step 8 for how this wires into the actual system launch screen) |
+| `DesignSystem.swift` | Design tokens (spacing/radius), button styles, cards, pressable modifier |
+| **Release 2.0 (retention & revenue) systems:** | |
+| `Analytics.swift` | Vendor-agnostic telemetry: typed events + pluggable sinks (DEBUG console today; attach TelemetryDeck in `attachDefaultSinks()`). No PII |
+| `MetricKitReporter.swift` | Apple-native crash/hang diagnostics → analytics, zero third-party SDK |
+| `NotificationManager.swift` | Local notifications: daily reminder, streak-at-risk, win-back. Opt-in after first daily; idempotent `refresh()` |
+| `Progression.swift` | `PlayerProfile` (XP/level/coins) + `GoalsManager` (3 date-seeded daily goals). The meta engine |
+| `ProgressionView.swift` | Progress sheet, level chip, goal rows, `CollectionView`/`ThemeCard` shop UI, celebration toast |
+| `CosmeticsStore.swift` | Owns theme ownership (milestone OR coin buy); one grant sink shared with StoreKit; milestone-unlock celebration |
+| `WeeklyEventManager.swift` + `WeeklyEventViews.swift` | Weekly Challenge / Weekend Sprint event on the seeded-sequence engine + result screen |
+| `StoreManager.swift` + `Products.storekit` | StoreKit 2 cosmetic shop (Supporter bundle + per-theme). Needs App Store Connect products to transact; `.storekit` is for local sim testing |
+| `DataMigration.swift` | Schema-version stamp + ordered migration runner (run before any manager reads defaults) |
 | `Assets.xcassets/AppIcon.appiconset` | Complete app icon set, all required sizes pre-rendered, matching the in-game tile's bevel/gradient look |
 | `Resources/lexis_dictionary.txt` | ~105,000-word dictionary (ENABLE1-derived, 3-9 letters), loaded at runtime by `WordValidator` in `GameModel.swift` |
 
@@ -155,19 +166,41 @@ config work:
   from or scarce on the current board. Don't hardcode the letter options
   back to a static array.
 
+## Release 2.0 — needs YOUR setup before it fully works on-device
+
+The 2.0 retention/revenue systems are code-complete and build clean, but a
+few things require your Apple accounts / hardware (they degrade gracefully
+until then — the app runs fine with none of these configured):
+
+- **App Store Connect IAP products** — create the products in
+  `StoreManager.ProductID` (supporter bundle + per-theme) with prices/
+  banking/tax. Until they exist, the shop UI is hidden and the coin economy
+  carries the collection. `Products.storekit` lets you test locally: attach
+  it to the run scheme in Xcode (Scheme ▸ Run ▸ Options ▸ StoreKit Config).
+- **Weekly Game Center leaderboard** — create board id
+  `lexis_leaderboard_weekly` in App Store Connect (submits no-op until then).
+- **Analytics vendor** — recommend TelemetryDeck; attach in
+  `Analytics.attachDefaultSinks()` (one line). Console-only in DEBUG today.
+- **iCloud progress sync** — deliberately NOT wired (adding the iCloud KVS
+  entitlement blindly can break device signing). `DataMigration` gives the
+  versioning seam; add `NSUbiquitousKeyValueStore` mirroring once the iCloud
+  capability is enabled on the App ID.
+- **Real-device pass** — notifications, StoreKit, haptics, and Game Center
+  all behave differently on device vs. Simulator; verify before shipping.
+- **Notification copy** — draft strings live in `NotificationManager.swift`
+  for your review/tuning before release.
+
 ## Not yet built (potential next steps, not committed to)
 
-- Push notifications reminding players of the daily challenge
-- Sound design / SFX
+- Sound design / SFX  *(done — procedural `SoundManager`; layered in P05)*
 - Custom `LaunchScreen.storyboard` matching `LaunchScreenView.swift`'s
   exact tile/wordmark, if the plain auto-generated icon-on-background
   launch screen (current setup) isn't good enough
 - CI (GitHub Actions) for build verification on PRs -- straightforward
   now that the Xcode project exists (`xcodebuild ... build` as shown
   above)
-- Running on a real device (only tested in Simulator so far -- Game
-  Center auth, in particular, behaves differently signed-out on-device
-  vs. Simulator)
+- Board backdrops / clear-burst colour sets as additional cosmetic
+  categories (R4 added themes only; `CosmeticsStore` is theme-scoped today)
 
 ## Browser preview
 
