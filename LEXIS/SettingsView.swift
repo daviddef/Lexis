@@ -158,6 +158,64 @@ struct SettingsView: View {
                             )
                         }
                         
+                        // Notifications (R2 — the daily habit)
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "NOTIFICATIONS")
+
+                            VStack(spacing: 2) {
+                                ToggleRow(
+                                    icon: "bell.badge.fill",
+                                    title: "Daily Reminder",
+                                    subtitle: "A nudge when today's puzzle is ready",
+                                    isOn: $settings.dailyReminderEnabled
+                                )
+                                if settings.dailyReminderEnabled {
+                                    Divider().background(Color.lexisBlockBorder.opacity(0.2))
+                                    HStack {
+                                        Image(systemName: "clock.fill")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.lexisAccent)
+                                            .frame(width: 26)
+                                        Text("Reminder Time")
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.lexisText)
+                                        Spacer()
+                                        Picker("", selection: $settings.dailyReminderHour) {
+                                            ForEach(0..<24, id: \.self) { h in
+                                                Text(hourLabel(h)).tag(h)
+                                            }
+                                        }
+                                        .tint(.lexisAccent)
+                                    }
+                                    .padding(.vertical, 8)
+                                }
+                                Divider().background(Color.lexisBlockBorder.opacity(0.2))
+                                ToggleRow(
+                                    icon: "flame.fill",
+                                    title: "Streak Reminder",
+                                    subtitle: "Warn me before a streak expires at midnight",
+                                    isOn: $settings.streakReminderEnabled
+                                )
+                                Divider().background(Color.lexisBlockBorder.opacity(0.2))
+                                ToggleRow(
+                                    icon: "hand.wave.fill",
+                                    title: "Comeback Nudge",
+                                    subtitle: "A reminder if I've been away a few days",
+                                    isOn: $settings.winbackEnabled
+                                )
+                            }
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.lexisBlock.opacity(0.6))
+                            )
+                            .onChange(of: settings.dailyReminderEnabled) { NotificationManager.shared.settingsChanged() }
+                            .onChange(of: settings.dailyReminderHour) { NotificationManager.shared.settingsChanged() }
+                            .onChange(of: settings.streakReminderEnabled) { NotificationManager.shared.settingsChanged() }
+                            .onChange(of: settings.winbackEnabled) { NotificationManager.shared.settingsChanged() }
+                        }
+
                         // About / reset
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader(title: "ABOUT")
@@ -386,6 +444,14 @@ struct DifficultyRow: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+/// "7:00 PM" style label for an hour 0…23, used by the daily-reminder time
+/// picker. Kept simple and locale-agnostic (12-hour clock with AM/PM).
+func hourLabel(_ h: Int) -> String {
+    let ampm = h < 12 ? "AM" : "PM"
+    let twelve = h % 12 == 0 ? 12 : h % 12
+    return "\(twelve):00 \(ampm)"
 }
 
 struct ToggleRow: View {

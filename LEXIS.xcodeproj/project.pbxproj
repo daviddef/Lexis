@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4004408499B751AFCEEFF955 /* SoundManager.swift */; };
 		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
+		2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */; };
 		4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */; };
 		55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */; };
 		58E8A642B2F1780A790EE1DE /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCA92EFAF6939161B4B302F /* Analytics.swift */; };
@@ -59,6 +60,7 @@
 		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		8A89042EB531104FA876E293 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		91BD40CA77F62987EA453C39 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LEXIS.entitlements; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 				95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */,
 				4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */,
 				ED8985306D4952468BB2F52A /* MetricKitReporter.swift */,
+				7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */,
 				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
 				4004408499B751AFCEEFF955 /* SoundManager.swift */,
 				11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */,
@@ -248,6 +251,7 @@
 				4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */,
 				70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */,
 				AEC5B9F55A6FBE483A6F507B /* MetricKitReporter.swift in Sources */,
+				2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */,
 				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
 				1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */,
 				55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */,

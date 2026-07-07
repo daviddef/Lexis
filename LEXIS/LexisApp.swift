@@ -12,6 +12,10 @@ struct LexisApp: App {
             Analytics.shared.attachDefaultSinks()
             Analytics.shared.appOpen()
             MetricKitReporter.shared.start()
+            // Notifications: register the tap handler and re-lay the schedule
+            // from current streak/settings state (self-heals on every launch).
+            NotificationManager.shared.configure()
+            NotificationManager.shared.refresh()
         }
     }
     

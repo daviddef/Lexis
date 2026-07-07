@@ -21,6 +21,7 @@ let boardHorizontalPadding: CGFloat = 4
 struct GameView: View {
     @StateObject private var model = GameModel()
     @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var notifications = NotificationManager.shared
     @State private var showWildcardPicker = false
     @State private var selectedTiles: [(row: Int, col: Int)] = []
     @State private var wordFlashText: String = ""
@@ -88,6 +89,16 @@ struct GameView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.4), value: model.phase)
+                // Deep-link from a tapped notification. Only auto-starts the
+                // daily from the menu (a tap mid-game shouldn't abandon a run),
+                // and only if today's puzzle isn't already done.
+                .onChange(of: notifications.pendingRoute) { _, route in
+                    guard route != nil else { return }
+                    if model.phase == .menu, !model.dailyManager.hasCompletedToday {
+                        model.startDailyChallenge()
+                    }
+                    notifications.pendingRoute = nil
+                }
 
                 // Danger-zone vignette — escalates with dangerSeverity
                 // (fraction of columns crowding the danger zone) rather than

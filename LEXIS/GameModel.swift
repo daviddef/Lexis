@@ -176,6 +176,24 @@ class GameSettings: ObservableObject {
     @Published var reduceMotion: Bool {
         didSet { UserDefaults.standard.set(reduceMotion, forKey: "lexisReduceMotion") }
     }
+    // Notifications (R2 — the daily habit). `notificationsRequested` records
+    // whether we've ever asked the OS for permission, so we only ask at the
+    // right moment. The three toggles gate the three reminder types.
+    @Published var notificationsRequested: Bool {
+        didSet { UserDefaults.standard.set(notificationsRequested, forKey: "lexisNotifRequested") }
+    }
+    @Published var dailyReminderEnabled: Bool {
+        didSet { UserDefaults.standard.set(dailyReminderEnabled, forKey: "lexisNotifDaily") }
+    }
+    @Published var dailyReminderHour: Int {
+        didSet { UserDefaults.standard.set(dailyReminderHour, forKey: "lexisNotifDailyHour") }
+    }
+    @Published var streakReminderEnabled: Bool {
+        didSet { UserDefaults.standard.set(streakReminderEnabled, forKey: "lexisNotifStreak") }
+    }
+    @Published var winbackEnabled: Bool {
+        didSet { UserDefaults.standard.set(winbackEnabled, forKey: "lexisNotifWinback") }
+    }
     @Published var tileTheme: TileTheme {
         didSet { UserDefaults.standard.set(tileTheme.rawValue, forKey: "lexisTileTheme") }
     }
@@ -192,6 +210,11 @@ class GameSettings: ObservableObject {
         self.showGhostPiece = UserDefaults.standard.object(forKey: "lexisGhost") as? Bool ?? true
         self.largeText = UserDefaults.standard.object(forKey: "lexisLargeText") as? Bool ?? false
         self.reduceMotion = UserDefaults.standard.object(forKey: "lexisReduceMotion") as? Bool ?? false
+        self.notificationsRequested = UserDefaults.standard.object(forKey: "lexisNotifRequested") as? Bool ?? false
+        self.dailyReminderEnabled = UserDefaults.standard.object(forKey: "lexisNotifDaily") as? Bool ?? true
+        self.dailyReminderHour = UserDefaults.standard.object(forKey: "lexisNotifDailyHour") as? Int ?? 19
+        self.streakReminderEnabled = UserDefaults.standard.object(forKey: "lexisNotifStreak") as? Bool ?? true
+        self.winbackEnabled = UserDefaults.standard.object(forKey: "lexisNotifWinback") as? Bool ?? true
         let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
         self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
@@ -782,6 +805,12 @@ class GameModel: ObservableObject {
                                   score: score, level: level, words: dailyWordsFoundList.count,
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
         Analytics.shared.dailyComplete(survived: survived, score: score, streak: dailyManager.currentStreak)
+        // The first daily result is the natural moment to ask for notification
+        // permission — the value ("come back tomorrow, keep your streak") is
+        // now self-evident. After any daily result, re-lay the schedule so the
+        // streak reminder rolls forward to the next at-risk evening.
+        NotificationManager.shared.requestAuthorizationIfAppropriate()
+        NotificationManager.shared.refresh()
         if survived {
             Haptics.success()
         } else {
