@@ -1759,6 +1759,11 @@ struct MenuView: View {
 
     var body: some View {
         ZStack {
+            // Ambient parallax field of faint drifting letters — the backmost
+            // decorative layer, giving the menu depth and life beneath the
+            // sharper logo rain and content.
+            AmbientDriftLayer()
+
             // Falling-letter rain spelling LEXIS, as a background layer
             // behind the menu content. It begins at the measured "LEXIS"
             // wordmark and each tile falls down the column beneath its own
@@ -1881,10 +1886,25 @@ struct MenuView: View {
 
             // How to play
             VStack(alignment: .leading, spacing: 12) {
+                // The game's core twist, taught with motion: a bright word
+                // sweeps a 3×3 patch across, down, and along both diagonals,
+                // so a new player sees the 8-way reading before hitting the
+                // confusing "wait, why is that a word?" moment in-game.
+                HStack(spacing: 14) {
+                    DirectionReadingCue()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("WORDS READ 8 WAYS")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundColor(.lexisGold)
+                            .tracking(1)
+                        Text("Across, down & along both diagonals")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.lexisText.opacity(0.85))
+                    }
+                }
                 HowToRow(icon: "arrow.left.arrow.right", text: "Tap the left or right of the board to steer — or slide to fling")
                 HowToRow(icon: "hand.tap", text: "Double-tap a glowing tile to clear its word — any direction")
                 HowToRow(icon: "star.fill", color: .lexisGold, text: "Golden blocks = wildcards. Pick any letter!")
-                HowToRow(icon: "arrow.up.right.and.arrow.down.left", text: "Chain words for massive combo scores")
             }
             .padding(20)
             .background(
@@ -2148,7 +2168,7 @@ struct HowToRow: View {
     let icon: String
     var color: Color = .lexisAccent
     let text: String
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -2158,6 +2178,145 @@ struct HowToRow: View {
             Text(text)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundColor(.lexisText.opacity(0.85))
+        }
+    }
+}
+
+// MARK: - Living-menu ambient layers
+
+// A slow, parallax field of faint letter tiles drifting up behind the menu,
+// giving the screen ambient depth and a sense of life without ever
+// competing with the menu content. Purely decorative (no hit testing) and
+// deliberately low-contrast. Tiles at different "depths" drift at different
+// rates and blurs, which reads as parallax. The field is hand-tuned and
+// deterministic — it looks the same every launch rather than randomly
+// clustering — and every mote starts pre-distributed along its path (via
+// its phase) so the menu is alive the instant it appears, not gradually
+// populating. Gated by `animate` so a reduce-motion pass can freeze it.
+struct AmbientDriftLayer: View {
+    var animate: Bool = true
+    // letter, x fraction across width, depth 0 (far) … 1 (near), phase 0…1
+    private let motes: [(letter: String, xFrac: CGFloat, depth: CGFloat, phase: Double)] = [
+        ("L", 0.12, 0.25, 0.00),
+        ("E", 0.82, 0.55, 0.35),
+        ("X", 0.30, 0.85, 0.60),
+        ("I", 0.66, 0.40, 0.15),
+        ("S", 0.50, 0.70, 0.80),
+        ("A", 0.90, 0.30, 0.50),
+        ("O", 0.06, 0.60, 0.25),
+        ("T", 0.42, 0.50, 0.90),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                ForEach(0..<motes.count, id: \.self) { i in
+                    let m = motes[i]
+                    AmbientMote(
+                        letter: m.letter,
+                        depth: m.depth,
+                        phase: m.phase,
+                        xFrac: m.xFrac,
+                        size: geo.size,
+                        animate: animate
+                    )
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct AmbientMote: View {
+    let letter: String
+    let depth: CGFloat      // 0 far … 1 near
+    let phase: Double
+    let xFrac: CGFloat
+    let size: CGSize
+    let animate: Bool
+    @State private var t: CGFloat
+
+    init(letter: String, depth: CGFloat, phase: Double, xFrac: CGFloat, size: CGSize, animate: Bool) {
+        self.letter = letter
+        self.depth = depth
+        self.phase = phase
+        self.xFrac = xFrac
+        self.size = size
+        self.animate = animate
+        _t = State(initialValue: CGFloat(phase))
+    }
+
+    var body: some View {
+        let tileSize = 26 + depth * 40          // near tiles are larger
+        let opacity = 0.035 + depth * 0.05      // all faint; near a touch stronger
+        let blur = (1 - depth) * 4 + 1          // far tiles blurrier
+        let duration = 26 - depth * 10          // near tiles drift faster
+        let startY = size.height + tileSize     // just below the screen
+        let endY = -tileSize                    // just above it
+        // The wrap seam (frac 1 → 0) maps endY → startY, both off-screen, so
+        // the loop never visibly teleports.
+        let frac = t - t.rounded(.down)
+        let y = startY + (endY - startY) * frac
+
+        Text(letter)
+            .font(.system(size: tileSize, weight: .black, design: .rounded))
+            .foregroundColor(Color.lexisAccent.opacity(opacity))
+            .blur(radius: blur)
+            .position(x: size.width * xFrac, y: y)
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+                    t = CGFloat(phase) + 1
+                }
+            }
+    }
+}
+
+// A compact, self-animating cue that teaches the game's core twist — words
+// read in several directions — right on the menu. A 3×3 patch of faint
+// tiles has a bright "word" sweep through it horizontally, then vertically,
+// then diagonally, on a loop, so a new player sees the 8-way reading before
+// they ever hit the confusing "why is that a word?" moment. `animate` lets a
+// reduce-motion pass hold it on the horizontal frame.
+struct DirectionReadingCue: View {
+    var animate: Bool = true
+    private let cell: CGFloat = 13
+    private let gap: CGFloat = 2
+    private let step: TimeInterval = 0.9
+    // Each frame lights a straight line of 3 cells in one direction.
+    private let frames: [[(Int, Int)]] = [
+        [(1, 0), (1, 1), (1, 2)],   // →  horizontal
+        [(0, 1), (1, 1), (2, 1)],   // ↓  vertical
+        [(0, 0), (1, 1), (2, 2)],   // ↘  diagonal
+        [(2, 0), (1, 1), (0, 2)],   // ↗  anti-diagonal
+    ]
+
+    var body: some View {
+        // Drive the sweep off a TimelineView clock rather than a Timer +
+        // @State (which would reintroduce a Swift 6 Sendable-closure warning).
+        TimelineView(.periodic(from: .now, by: step)) { context in
+            let idx = animate
+                ? Int(context.date.timeIntervalSinceReferenceDate / step) % frames.count
+                : 0
+            grid(for: idx)
+                .animation(.easeInOut(duration: 0.35), value: idx)
+        }
+    }
+
+    private func grid(for idx: Int) -> some View {
+        let lit = Set(frames[idx].map { "\($0.0),\($0.1)" })
+        return VStack(spacing: gap) {
+            ForEach(0..<3, id: \.self) { r in
+                HStack(spacing: gap) {
+                    ForEach(0..<3, id: \.self) { c in
+                        let on = lit.contains("\(r),\(c)")
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(on ? Color.lexisGold.opacity(0.9) : Color.lexisAccent.opacity(0.14))
+                            .frame(width: cell, height: cell)
+                            .shadow(color: on ? Color.lexisGold.opacity(0.7) : .clear, radius: on ? 4 : 0)
+                    }
+                }
+            }
         }
     }
 }

@@ -16,10 +16,21 @@ struct LaunchScreenView: View {
             Color.lexisBg.ignoresSafeArea()
             
             VStack(spacing: 12) {
-                // A static rendition of the hero tile from the app icon,
-                // so the launch screen and icon feel like the same object
-                // continuing into the app.
+                // A static rendition of the hero tile from the app icon, so
+                // the launch screen and icon feel like the same object
+                // continuing into the app. Carries the same bevel depth as
+                // the in-game tiles (bright top-left / dark bottom-right
+                // strokes + inner sheen + drop shadow) so it reads as the
+                // same chunky, tactile block the player steers, not a flatter
+                // one-off.
                 ZStack {
+                    // Drop shadow
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(Color.black.opacity(0.4))
+                        .frame(width: 100, height: 100)
+                        .offset(y: 4)
+                        .blur(radius: 8)
+
                     RoundedRectangle(cornerRadius: 22)
                         .fill(
                             LinearGradient(
@@ -32,16 +43,38 @@ struct LaunchScreenView: View {
                             )
                         )
                         .frame(width: 100, height: 100)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22)
-                                .strokeBorder(Color.lexisAccent, lineWidth: 3)
+
+                    // Bevel: dark bottom-right, bright top-left
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(Color.black.opacity(0.3), lineWidth: 3)
+                        .offset(x: 1, y: 1)
+                        .frame(width: 100, height: 100)
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(Color.white.opacity(0.5), lineWidth: 3)
+                        .offset(x: -1, y: -1)
+                        .frame(width: 100, height: 100)
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(Color.lexisAccent, lineWidth: 3)
+                        .frame(width: 100, height: 100)
+
+                    // Inner top sheen
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.18), Color.white.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .center
+                            )
                         )
-                        .shadow(color: Color.lexisAccent.opacity(0.4), radius: 20)
-                    
+                        .frame(width: 100, height: 100)
+                        .padding(4)
+
                     Text("L")
                         .font(.system(size: 56, weight: .black, design: .rounded))
                         .foregroundColor(Color.lexisBg)
+                        .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
                 }
+                .shadow(color: Color.lexisAccent.opacity(0.35), radius: 20)
                 
                 Text("LEXIS")
                     .font(.system(size: 32, weight: .black, design: .rounded))
