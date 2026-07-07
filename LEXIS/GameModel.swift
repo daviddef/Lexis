@@ -560,8 +560,13 @@ class GameModel: ObservableObject {
         spawnNewLetter()
         phase = .playing
         startDropTimer()
+        gameStartDate = Date()
+        Analytics.shared.gameStart(mode: "endless", difficulty: settings.difficulty.rawValue)
     }
-    
+
+    // Wall-clock start of the current run, for the game_over duration metric.
+    private var gameStartDate = Date()
+
     // MARK: - Daily Challenge
     // A fixed 40-letter sequence, identical for every player on a given
     // calendar day (seeded from the date). No wildcards or bombs — the
@@ -595,8 +600,10 @@ class GameModel: ObservableObject {
         spawnNewLetter()
         phase = .playing
         startDropTimer()
+        gameStartDate = Date()
+        Analytics.shared.gameStart(mode: "daily", difficulty: settings.difficulty.rawValue)
     }
-    
+
     // MARK: - Duel
     // Async head-to-head: two players play the identical letter sequence
     // (keyed by a shareable code instead of a date) and compare scores
@@ -630,12 +637,17 @@ class GameModel: ObservableObject {
         spawnNewLetter()
         phase = .playing
         startDropTimer()
+        gameStartDate = Date()
+        Analytics.shared.gameStart(mode: "duel", difficulty: settings.difficulty.rawValue)
     }
 
     private func completeDuel(survived: Bool) {
         dropTimer?.invalidate()
         duelResult = (code: duelCode, score: score, wordsFound: dailyWordsFoundList)
         phase = .gameOver
+        Analytics.shared.gameOver(mode: "duel", difficulty: settings.difficulty.rawValue,
+                                  score: score, level: level, words: dailyWordsFoundList.count,
+                                  durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
         if survived {
             Haptics.success()
         } else {
@@ -766,6 +778,10 @@ class GameModel: ObservableObject {
         )
         GameCenterManager.shared.submitDailyScore(score)
         phase = .gameOver
+        Analytics.shared.gameOver(mode: "daily", difficulty: settings.difficulty.rawValue,
+                                  score: score, level: level, words: dailyWordsFoundList.count,
+                                  durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
+        Analytics.shared.dailyComplete(survived: survived, score: score, streak: dailyManager.currentStreak)
         if survived {
             Haptics.success()
         } else {
@@ -973,6 +989,7 @@ class GameModel: ObservableObject {
     func triggerBankedBomb() {
         guard bombsAvailable > 0, phase == .playing else { return }
         bombsAvailable -= 1
+        Analytics.shared.powerUpUsed("bomb")
         triggerBombBlast(col: fallingCol)
         clearColumn(fallingCol)
         justUsedBomb = true
@@ -1036,6 +1053,7 @@ class GameModel: ObservableObject {
         dropTimer?.invalidate()
         Haptics.success()
         SoundManager.powerUp()
+        Analytics.shared.powerUpUsed("freeze")
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             guard self.phase == .playing else { return }
             self.isFrozen = false
@@ -1052,6 +1070,7 @@ class GameModel: ObservableObject {
         fallingLetter = nextLetter()
         Haptics.success()
         SoundManager.powerUp()
+        Analytics.shared.powerUpUsed("reroll")
     }
 
     // Peek: briefly reveal the 2 letters after the very next one (which is
@@ -1071,6 +1090,7 @@ class GameModel: ObservableObject {
         peekLetters = Array(letterBag.suffix(3).dropLast().reversed())
         Haptics.success()
         SoundManager.powerUp()
+        Analytics.shared.powerUpUsed("peek")
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             self.peekLetters = []
         }
@@ -1126,6 +1146,7 @@ class GameModel: ObservableObject {
         justUsedTip = true
         Haptics.success()
         SoundManager.powerUp()
+        Analytics.shared.powerUpUsed("tip")
 
         // Knocking can reveal or complete a word both in the column the
         // tile left (now shorter) and the column it landed in — check both.
@@ -1468,6 +1489,7 @@ class GameModel: ObservableObject {
             // demonstrated, so the tutorial is done and never runs again.
             isTutorialActive = false
             settings.hasSeenTutorial = true
+            Analytics.shared.tutorialComplete()
         }
 
         if blocksDropped - lastComboBlockCount <= comboDecayBlockWindow {
@@ -1500,6 +1522,8 @@ class GameModel: ObservableObject {
         lastWordResult = words.first
         Haptics.success()
         SoundManager.wordClear(length: words.map { $0.word.count }.max() ?? 3)
+        Analytics.shared.wordCleared(maxLen: words.map { $0.word.count }.max() ?? 3,
+                                     isChain: words.contains { $0.isChain }, comboCount: comboCount)
 
 
         // Longer words (5+) bank a "clear path" bomb charge as a reward,
@@ -1622,6 +1646,9 @@ class GameModel: ObservableObject {
         SoundManager.gameOver()
         settings.recordScore(score, difficulty: settings.difficulty, wordsFound: foundWords.count)
         AchievementTracker.onGameOver(score: score, difficulty: settings.difficulty, blocksDropped: blocksDropped)
+        Analytics.shared.gameOver(mode: "endless", difficulty: settings.difficulty.rawValue,
+                                  score: score, level: level, words: foundWords.count,
+                                  durationSec: Int(Date().timeIntervalSince(gameStartDate)))
     }
 
     // A Wordle-style recap for an Endless run — DailyChallengeManager
