@@ -585,6 +585,7 @@ class GameModel: ObservableObject {
         startDropTimer()
         gameStartDate = Date()
         Analytics.shared.gameStart(mode: "endless", difficulty: settings.difficulty.rawValue)
+        GoalsManager.shared.onRunStarted()
     }
 
     // Wall-clock start of the current run, for the game_over duration metric.
@@ -625,6 +626,8 @@ class GameModel: ObservableObject {
         startDropTimer()
         gameStartDate = Date()
         Analytics.shared.gameStart(mode: "daily", difficulty: settings.difficulty.rawValue)
+        GoalsManager.shared.onRunStarted()
+        GoalsManager.shared.onDailyPlayed()
     }
 
     // MARK: - Duel
@@ -662,6 +665,7 @@ class GameModel: ObservableObject {
         startDropTimer()
         gameStartDate = Date()
         Analytics.shared.gameStart(mode: "duel", difficulty: settings.difficulty.rawValue)
+        GoalsManager.shared.onRunStarted()
     }
 
     private func completeDuel(survived: Bool) {
@@ -671,6 +675,8 @@ class GameModel: ObservableObject {
         Analytics.shared.gameOver(mode: "duel", difficulty: settings.difficulty.rawValue,
                                   score: score, level: level, words: dailyWordsFoundList.count,
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
+        GoalsManager.shared.onRunEnded(score: score)
+        PlayerProfile.shared.addXP(score / 20)
         if survived {
             Haptics.success()
         } else {
@@ -805,6 +811,8 @@ class GameModel: ObservableObject {
                                   score: score, level: level, words: dailyWordsFoundList.count,
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)), survived: survived)
         Analytics.shared.dailyComplete(survived: survived, score: score, streak: dailyManager.currentStreak)
+        GoalsManager.shared.onRunEnded(score: score)
+        PlayerProfile.shared.addXP(score / 20 + (survived ? 50 : 0))
         // The first daily result is the natural moment to ask for notification
         // permission — the value ("come back tomorrow, keep your streak") is
         // now self-evident. After any daily result, re-lay the schedule so the
@@ -1540,7 +1548,15 @@ class GameModel: ObservableObject {
             if isSequenceMode {
                 dailyWordsFoundList.append(word.word)
             }
+            // Progression (R3): XP per letter + daily-goal progress. A word is
+            // diagonal when both its row and column span more than one line.
+            let rows = Set(word.tiles.map { $0.row })
+            let cols = Set(word.tiles.map { $0.col })
+            let isDiagonal = rows.count > 1 && cols.count > 1
+            PlayerProfile.shared.addXP(word.word.count * 2)
+            GoalsManager.shared.onWordCleared(length: word.word.count, isDiagonal: isDiagonal)
         }
+        GoalsManager.shared.onComboReached(comboCount)
 
         score += totalScore
         if !isSequenceMode, score > highScore {
@@ -1678,6 +1694,8 @@ class GameModel: ObservableObject {
         Analytics.shared.gameOver(mode: "endless", difficulty: settings.difficulty.rawValue,
                                   score: score, level: level, words: foundWords.count,
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)))
+        GoalsManager.shared.onRunEnded(score: score)
+        PlayerProfile.shared.addXP(score / 20)
     }
 
     // A Wordle-style recap for an Endless run — DailyChallengeManager

@@ -22,6 +22,9 @@ struct GameView: View {
     @StateObject private var model = GameModel()
     @ObservedObject private var settings = GameSettings.shared
     @ObservedObject private var notifications = NotificationManager.shared
+    @ObservedObject private var profile = PlayerProfile.shared
+    @ObservedObject private var goals = GoalsManager.shared
+    @State private var celebration: CelebrationItem?
     @State private var showWildcardPicker = false
     @State private var selectedTiles: [(row: Int, col: Int)] = []
     @State private var wordFlashText: String = ""
@@ -99,6 +102,33 @@ struct GameView: View {
                     }
                     notifications.pendingRoute = nil
                 }
+                // Progression celebrations (R3): a level-up or goal completion
+                // raises a transient banner. Goal-completion fires first so a
+                // goal whose XP triggers a level-up shows both in sequence.
+                .onChange(of: goals.justCompleted) { _, g in
+                    guard let g else { return }
+                    showCelebration(CelebrationItem(icon: "checkmark.seal.fill", tint: .lexisGold,
+                        title: "Goal complete!", subtitle: "\(g.title)  ·  +\(g.xpReward) XP"))
+                    goals.justCompleted = nil
+                }
+                .onChange(of: profile.pendingLevelUp) { _, lvl in
+                    guard let lvl else { return }
+                    showCelebration(CelebrationItem(icon: "arrow.up.circle.fill", tint: .lexisAccent,
+                        title: "Level \(lvl)!", subtitle: "You leveled up"))
+                    profile.pendingLevelUp = nil
+                }
+
+                // Celebration banner overlay
+                if let c = celebration {
+                    VStack {
+                        CelebrationToast(icon: c.icon, tint: c.tint, title: c.title, subtitle: c.subtitle)
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(false)
+                    .zIndex(10)
+                }
 
                 // Danger-zone vignette — escalates with dangerSeverity
                 // (fraction of columns crowding the danger zone) rather than
@@ -153,6 +183,20 @@ struct GameView: View {
                 DifficultySelectSheet { _ in
                     model.startGame()
                 }
+            }
+        }
+    }
+
+    // Raises the celebration banner and auto-dismisses it. A fresh item
+    // replaces any showing one, so back-to-back completions don't stack.
+    private func showCelebration(_ item: CelebrationItem) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+            celebration = item
+        }
+        let shown = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            if celebration == shown {
+                withAnimation(.easeOut(duration: 0.3)) { celebration = nil }
             }
         }
     }
@@ -1776,11 +1820,13 @@ struct MenuView: View {
     @ObservedObject private var settings = GameSettings.shared
     @ObservedObject private var gameCenter = GameCenterManager.shared
     @ObservedObject private var dailyManager = DailyChallengeManager.shared
+    @ObservedObject private var goalsManager = GoalsManager.shared
     @State private var logoScale: CGFloat = 0.8
     @State private var logoGlow = false
     @State private var showDailyResults = false
     @State private var showLeaderboardScopeDialog = false
     @State private var showDuelSetup = false
+    @State private var showProgress = false
     // Measured frame of the "LEXIS" wordmark (in the "menu" coordinate
     // space) — the falling-tile rain starts from here so each letter looks
     // like it drops straight out of the title.
@@ -1840,10 +1886,30 @@ struct MenuView: View {
 
     private var menuContent: some View {
         VStack(spacing: 0) {
-            // Leaderboard + settings, top-right
+            // Level chip (leading) + goals/leaderboard/settings (trailing)
             HStack {
+                Button { showProgress = true } label: { LevelChip() }
+                    .buttonStyle(LexisScaleButtonStyle())
+
                 Spacer()
-                
+
+                Button { showProgress = true } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.lexisMid)
+                            .frame(width: 40, height: 40)
+                            .background(Color.lexisBlock.opacity(0.6))
+                            .clipShape(Circle())
+                        // Gold dot while any of today's goals are still open.
+                        if goalsManager.completedCount < goalsManager.dailyGoals.count {
+                            Circle().fill(Color.lexisGold).frame(width: 9, height: 9)
+                                .overlay(Circle().stroke(Color.lexisBg, lineWidth: 1.5))
+                                .offset(x: 1, y: -1)
+                        }
+                    }
+                }
+
                 if gameCenter.isAuthenticated {
                     Button {
                         showLeaderboardScopeDialog = true
@@ -2104,6 +2170,9 @@ struct MenuView: View {
             if let result = dailyManager.todayResult {
                 DailyResultView(result: result, streak: dailyManager.currentStreak)
             }
+        }
+        .sheet(isPresented: $showProgress) {
+            ProgressSheet()
         }
     }
 }

@@ -16,6 +16,8 @@ struct LexisApp: App {
             // from current streak/settings state (self-heals on every launch).
             NotificationManager.shared.configure()
             NotificationManager.shared.refresh()
+            // Refresh today's goals (regenerates if the date rolled over).
+            GoalsManager.shared.loadOrGenerate()
         }
     }
     

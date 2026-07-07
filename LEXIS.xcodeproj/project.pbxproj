@@ -10,6 +10,7 @@
 		1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4004408499B751AFCEEFF955 /* SoundManager.swift */; };
 		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
 		2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */; };
+		3EBAA50613F7CA25FCFC132B /* Progression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE69FA2CB4882A3BF24C6C /* Progression.swift */; };
 		4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */; };
 		55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */; };
 		58E8A642B2F1780A790EE1DE /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCA92EFAF6939161B4B302F /* Analytics.swift */; };
@@ -24,6 +25,7 @@
 		AA63142E2878FE3249667222 /* lexis_dictionary.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7E6663358510107CC9386D8 /* lexis_dictionary.txt */; };
 		AEC5B9F55A6FBE483A6F507B /* MetricKitReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8985306D4952468BB2F52A /* MetricKitReporter.swift */; };
 		BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A89042EB531104FA876E293 /* DesignSystem.swift */; };
+		E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558A47F9FA6805DCB595B6AC /* ProgressionView.swift */; };
 		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -57,11 +59,13 @@
 		35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyChallengeManager.swift; sourceTree = "<group>"; };
 		4004408499B751AFCEEFF955 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisApp.swift; sourceTree = "<group>"; };
+		558A47F9FA6805DCB595B6AC /* ProgressionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionView.swift; sourceTree = "<group>"; };
 		58CFDE30095075626DBA2E44 /* GameCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
 		7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		8A89042EB531104FA876E293 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		8DEE69FA2CB4882A3BF24C6C /* Progression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Progression.swift; sourceTree = "<group>"; };
 		91BD40CA77F62987EA453C39 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LEXIS.entitlements; sourceTree = "<group>"; };
 		9BB923545BDA3934E8D366F7 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
@@ -100,6 +104,8 @@
 				4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */,
 				ED8985306D4952468BB2F52A /* MetricKitReporter.swift */,
 				7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */,
+				8DEE69FA2CB4882A3BF24C6C /* Progression.swift */,
+				558A47F9FA6805DCB595B6AC /* ProgressionView.swift */,
 				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
 				4004408499B751AFCEEFF955 /* SoundManager.swift */,
 				11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */,
@@ -252,6 +258,8 @@
 				70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */,
 				AEC5B9F55A6FBE483A6F507B /* MetricKitReporter.swift in Sources */,
 				2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */,
+				3EBAA50613F7CA25FCFC132B /* Progression.swift in Sources */,
+				E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */,
 				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
 				1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */,
 				55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */,
