@@ -253,6 +253,17 @@ struct PlayingView: View {
     // this gesture — lets a continuous slide across the board step the piece
     // column by column as the finger travels, then resets on release.
     @State private var boardDragAccum: CGFloat = 0
+    // Manual double-tap detection for hard-drop / word-clear. SwiftUI's
+    // TapGesture(count:2) demanded an unforgivingly fast, pixel-tight double
+    // tap (and fought the slide + knock gestures), so drops kept failing.
+    // We track the last tap's time + column and treat a second tap in the
+    // SAME column within `doubleTapWindow` as a double — generous, and scoped
+    // to one column so it never misfires against one-column steering taps or
+    // the word-preview tap on a glowing tile. Multi-column movement is the
+    // slide's job, so single taps being one-column nudges is fine.
+    @State private var lastTapAt: Date = .distantPast
+    @State private var lastTapCol: Int = -1
+    private let doubleTapWindow: TimeInterval = 0.45
     // Short-lived shard bursts, one per tile of a just-cleared word, so a
     // clear reads as the tiles bursting apart rather than blinking out.
     @State private var shardBursts: [ClearShardBurst] = []
@@ -1179,36 +1190,42 @@ struct PlayingView: View {
             isPreviewHighlighted: previewedPositions.contains("\(row),\(col)"),
             justLanded: model.lastLandedCell == GridPos(row: row, col: col)
         )
-        // Tap controls, arrow-key style: a single tap on the left half of
-        // the board nudges the piece one column left, the right half nudges
-        // it right — mirroring the keyboard's left/right arrows. Tapping a
-        // glowing tile instead previews its word; double-tapping a glowing
-        // tile clears it, and a double-tap anywhere else hard-drops (like the
-        // up arrow). One combined gesture rather than separate
-        // .onTapGesture(count:) modifiers — independent tap-count gestures
-        // race each other unreliably; .exclusively(before:) tries the
-        // double-tap first and falls back to single-tap.
+        // Tap controls, arrow-key style: a single tap on the left half of the
+        // board nudges the piece one column left, the right half nudges it
+        // right. Tapping a glowing tile previews its word. A SECOND tap in the
+        // same column, within doubleTapWindow, is a "double tap": it clears a
+        // glowing tile, or hard-drops otherwise. This is one tap gesture with
+        // manual timing rather than TapGesture(count:2).exclusively(...),
+        // which required a too-fast, pixel-tight double tap and often failed.
+        // The single-tap action still fires instantly, so steering never lags.
         .gesture(
-            TapGesture(count: 2)
-                .onEnded {
+            TapGesture(count: 1).onEnded {
+                let now = Date()
+                // Same or adjacent column tolerates a little finger drift
+                // between the two taps of a drop, which pure same-column didn't.
+                let isDouble = now.timeIntervalSince(lastTapAt) < doubleTapWindow && abs(lastTapCol - col) <= 1
+                if isDouble {
+                    // Consume so a third quick tap starts a fresh sequence.
+                    lastTapAt = .distantPast
+                    lastTapCol = -1
                     let isFalling = (row == model.fallingRow && col == model.fallingCol)
                     if !isFalling, model.grid[row][col]?.glowingWordID != nil {
                         model.doubleTapClear(row: row, col: col)
                     } else {
                         model.dropFast()
                     }
-                }
-                .exclusively(before: TapGesture(count: 1)
-                    .onEnded {
-                        if model.grid[row][col]?.glowingWordID != nil {
-                            showWordPreview(row: row, col: col)
-                        } else if col < GameConstants.cols / 2 {
-                            model.moveLeft()
-                        } else {
-                            model.moveRight()
-                        }
+                } else {
+                    lastTapAt = now
+                    lastTapCol = col
+                    if model.grid[row][col]?.glowingWordID != nil {
+                        showWordPreview(row: row, col: col)
+                    } else if col < GameConstants.cols / 2 {
+                        model.moveLeft()
+                    } else {
+                        model.moveRight()
                     }
-                )
+                }
+            }
         )
 
         if isTopOfColumn(row: row, col: col) {
