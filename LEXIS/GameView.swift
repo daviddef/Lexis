@@ -119,7 +119,7 @@ struct GameView: View {
                 .onChange(of: profile.pendingLevelUp) { _, lvl in
                     guard let lvl else { return }
                     showCelebration(CelebrationItem(icon: "arrow.up.circle.fill", tint: .lexisAccent,
-                        title: "Level \(lvl)!", subtitle: "You leveled up  ·  +25 coins"))
+                        title: "Level \(lvl)!", subtitle: "You leveled up — coins earned"))
                     profile.pendingLevelUp = nil
                 }
                 .onChange(of: cosmetics.justUnlocked) { _, theme in
@@ -1131,7 +1131,14 @@ struct PlayingView: View {
                         ads.showRewarded(placement: "charge", onReward: {
                             model.grantUtilityCharge()
                         }, onFinished: {
-                            if wasPlaying && model.phase == .paused { model.resumeGame() }
+                            // Always un-pause a run we paused, unless it's
+                            // genuinely over. Guarding on `== .paused` risked
+                            // leaving the game frozen if a real (async) ad's
+                            // dismissal raced another phase change; resumeGame
+                            // re-invalidates the timer so it's safe to call.
+                            if wasPlaying && model.phase != .gameOver && model.phase != .menu {
+                                model.resumeGame()
+                            }
                         })
                     } label: {
                         HStack(spacing: 6) {
@@ -1280,7 +1287,17 @@ struct PlayingView: View {
                 DragGesture(minimumDistance: 18)
                     .onEnded { value in
                         let dx = value.translation.width
-                        guard abs(dx) > tileSize * 0.4, abs(value.translation.height) < tileSize * 0.7 else { return }
+                        let dy = value.translation.height
+                        // A clear DOWNWARD swipe hard-drops, mirroring the board
+                        // gesture. Because this knock gesture is high-priority on
+                        // stacked top tiles, without this a swipe-to-drop that
+                        // starts on a column top would be swallowed and do
+                        // nothing — a dead zone that grows as the board fills.
+                        if dy > tileSize * 3, abs(dy) > abs(dx) {
+                            model.dropFast()
+                            return
+                        }
+                        guard abs(dx) > tileSize * 0.4, abs(dy) < tileSize * 0.7 else { return }
                         model.knockTile(col: col, direction: dx > 0 ? .right : .left)
                     }
             )

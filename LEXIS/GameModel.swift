@@ -1192,14 +1192,14 @@ class GameModel: ObservableObject {
     func usePeek() {
         guard utilityCharges > 0, phase == .playing, peekLetters.isEmpty else { return }
         utilityCharges -= 1
-        // Peeking this deep can require refilling the bag early to have
-        // enough letters to show — safe, since refillBag() is just a
-        // reshuffle and doesn't change what's already queued to be drawn.
-        // nextLetter() draws from the END of the bag, so the letter drawn
-        // 2nd-from-now sits at count-2 and 3rd-from-now at count-3 —
-        // dropLast() removes the already-visible upcomingLetter (count-1),
-        // and reversed() puts what's left back into draw order.
-        while letterBag.count < 3 { refillBag() }
+        // Peeking this deep can require topping the bag up early. Draws come
+        // from the END of the bag (nextLetter → removeLast), so we PREPEND a
+        // fresh shuffle to the front — this preserves the already-queued tail
+        // (and therefore the upcomingLetter the UI is showing) instead of
+        // reshuffling it away, which would make the "next" preview lie.
+        // dropLast() removes the already-visible upcomingLetter (count-1), and
+        // reversed() puts what's left back into draw order.
+        while letterBag.count < 3 { letterBag.insert(contentsOf: letterPool.shuffled(), at: 0) }
         peekLetters = Array(letterBag.suffix(3).dropLast().reversed())
         Haptics.success()
         SoundManager.powerUp()
@@ -1660,12 +1660,16 @@ class GameModel: ObservableObject {
             tipsAvailable = min(3, tipsAvailable + 1)
         }
         
-        // Track lifetime words for Game Center achievements
-        for word in words {
-            allTimeWordCount += 1
-            AchievementTracker.onWordFound(word: word.word, totalWordsThisSession: foundWords.count, allTimeWordCount: allTimeWordCount)
+        // Track lifetime words for Game Center achievements — but NOT during a
+        // revived (ad-continued) run, which is leaderboard/record ineligible;
+        // the score sinks are already gated, and achievements are records too.
+        if !runIneligibleForLeaderboard {
+            for word in words {
+                allTimeWordCount += 1
+                AchievementTracker.onWordFound(word: word.word, totalWordsThisSession: foundWords.count, allTimeWordCount: allTimeWordCount)
+            }
+            AchievementTracker.onCombo(comboCount)
         }
-        AchievementTracker.onCombo(comboCount)
         
         // Remove the words we just cleared from the pending/glowing set
         let clearedIDs = Set(words.map { $0.id })

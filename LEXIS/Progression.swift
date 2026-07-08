@@ -166,8 +166,12 @@ final class GoalsManager: ObservableObject {
 
     /// Deterministically pick 3 distinct goals from the catalogue, seeded by
     /// the date string so the set is stable all day and identical on relaunch.
+    /// Uses an explicit FNV-1a hash rather than `String.hashValue`, which Swift
+    /// salts randomly per process launch (so it wouldn't be deterministic).
     private func pickGoals(seed: String) -> [Goal] {
-        var state = UInt64(bitPattern: Int64(seed.hashValue)) ^ 0x9E3779B97F4A7C15
+        var h: UInt64 = 0xcbf29ce484222325
+        for b in seed.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
+        var state = h ^ 0x9E3779B97F4A7C15
         func next() -> UInt64 {
             state &+= 0x9E3779B97F4A7C15
             var z = state
