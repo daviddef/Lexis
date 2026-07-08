@@ -254,22 +254,20 @@ struct PlayingView: View {
     // this gesture — lets a continuous slide across the board step the piece
     // column by column as the finger travels, then resets on release.
     @State private var boardDragAccum: CGFloat = 0
-    // Manual double-tap detection for hard-drop / word-clear. SwiftUI's
-    // TapGesture(count:2) demanded an unforgivingly fast, pixel-tight double
-    // tap (and fought the slide + knock gestures), so drops kept failing.
-    // We track the last tap's time + column and treat a second tap in the
-    // SAME column within `doubleTapWindow` as a double — generous, and scoped
-    // to one column so it never misfires against one-column steering taps or
-    // the word-preview tap on a glowing tile. Multi-column movement is the
-    // slide's job, so single taps being one-column nudges is fine.
+    // Manual tap handling for steer / hard-drop / word-clear.
+    //
+    // A single tap's action (move / preview) is DEFERRED by `doubleTapWindow`
+    // rather than fired instantly. If a second tap lands within that window
+    // (same or adjacent column) the pending single-tap is CANCELLED and we
+    // drop / clear instead — so a double-tap never nudges the piece first
+    // (the "pre-nudge" bug). The trade-off is a small, deliberate delay before
+    // a single tap moves; multi-column repositioning is the slide's job.
     @State private var lastTapAt: Date = .distantPast
     @State private var lastTapCol: Int = -1
-    // The falling piece's column BEFORE the last single-tap nudged it, so a
-    // double-tap can cancel that nudge and drop straight down in place.
-    @State private var colBeforeLastNudge: Int = -1
-    // Tight enough that deliberate steering taps (spaced apart) each move,
-    // loose enough that a natural quick double-tap still registers as a drop.
-    private let doubleTapWindow: TimeInterval = 0.3
+    @State private var pendingTap: DispatchWorkItem?
+    // Long enough to catch a natural double-tap, short enough that a single
+    // steer tap still feels prompt. This is the one dial for the feel.
+    private let doubleTapWindow: TimeInterval = 0.22
     // Short-lived shard bursts, one per tile of a just-cleared word, so a
     // clear reads as the tiles bursting apart rather than blinking out.
     @State private var shardBursts: [ClearShardBurst] = []
@@ -1228,45 +1226,48 @@ struct PlayingView: View {
         )
         // Tap controls, arrow-key style: a single tap on the left half of the
         // board nudges the piece one column left, the right half nudges it
-        // right — instantly, so steering never lags. A SECOND tap in the same
-        // or adjacent column within doubleTapWindow is a "double tap": clear a
-        // glowing tile, or hard-drop otherwise. Crucially the double-tap
-        // CANCELS the first tap's nudge (via dropFast(inColumn:)) so a double
-        // tap just drops in place instead of drifting a column toward the tap.
-        // One tap gesture with manual timing rather than TapGesture(count:2),
-        // which required a too-fast, pixel-tight double tap and often failed.
+        // right. A quick SECOND tap (same or adjacent column) is a "double
+        // tap": clear a glowing tile, or hard-drop otherwise. The single-tap
+        // action is DEFERRED by doubleTapWindow so a double-tap cancels it
+        // before it runs — the piece never nudges toward the tap before
+        // dropping (the old "pre-nudge" bug). One tap gesture with manual
+        // timing rather than TapGesture(count:2), which demanded a too-fast,
+        // pixel-tight double tap and often failed.
         .gesture(
             TapGesture(count: 1).onEnded {
                 let now = Date()
-                let isDouble = now.timeIntervalSince(lastTapAt) < doubleTapWindow && abs(lastTapCol - col) <= 1
-                if isDouble {
-                    // Consume so a third quick tap starts a fresh sequence.
+                let isSecond = now.timeIntervalSince(lastTapAt) < doubleTapWindow && abs(lastTapCol - col) <= 1
+                if isSecond {
+                    // Second tap of a double: cancel the still-pending single
+                    // tap (nothing has moved) and drop / clear in place.
+                    pendingTap?.cancel()
+                    pendingTap = nil
                     lastTapAt = .distantPast
                     lastTapCol = -1
                     let isFalling = (row == model.fallingRow && col == model.fallingCol)
                     if !isFalling, model.grid[row][col]?.glowingWordID != nil {
                         model.doubleTapClear(row: row, col: col)
                     } else {
-                        // Undo the first tap's nudge and drop where the piece
-                        // actually was.
-                        model.dropFast(inColumn: colBeforeLastNudge)
+                        model.dropFast()   // current column — no nudge ever happened
                     }
                 } else {
+                    // Possibly the first tap of a double: DEFER the move/preview
+                    // so a fast second tap can cancel it before it runs.
                     lastTapAt = now
                     lastTapCol = col
-                    if model.grid[row][col]?.glowingWordID != nil {
-                        showWordPreview(row: row, col: col)
-                        colBeforeLastNudge = -1   // preview didn't move the piece
-                    } else {
-                        // Remember where the piece was before this nudge, so a
-                        // follow-up tap (a double) can cancel it.
-                        colBeforeLastNudge = model.fallingCol
-                        if col < GameConstants.cols / 2 {
+                    pendingTap?.cancel()
+                    let work = DispatchWorkItem {
+                        if model.grid[row][col]?.glowingWordID != nil {
+                            showWordPreview(row: row, col: col)
+                        } else if col < GameConstants.cols / 2 {
                             model.moveLeft()
                         } else {
                             model.moveRight()
                         }
+                        pendingTap = nil
                     }
+                    pendingTap = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
                 }
             }
         )
