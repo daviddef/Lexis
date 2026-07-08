@@ -267,20 +267,15 @@ struct PlayingView: View {
     // this gesture — lets a continuous slide across the board step the piece
     // column by column as the finger travels, then resets on release.
     @State private var boardDragAccum: CGFloat = 0
-    // Manual tap handling for steer / hard-drop / word-clear.
-    //
-    // A single tap's action (move / preview) is DEFERRED by `doubleTapWindow`
-    // rather than fired instantly. If a second tap lands within that window
-    // (same or adjacent column) the pending single-tap is CANCELLED and we
-    // drop / clear instead — so a double-tap never nudges the piece first
-    // (the "pre-nudge" bug). The trade-off is a small, deliberate delay before
-    // a single tap moves; multi-column repositioning is the slide's job.
+    // Tap handling. Steering (a tap on the left/right of a NON-glowing tile)
+    // fires INSTANTLY — no timing games — because hard-drop no longer lives on
+    // double-tap (it's a downward swipe now, see the board drag). The only
+    // remaining double-tap is on a GLOWING tile: one tap previews the word, a
+    // quick second tap clears it. Neither previews nor clears move the piece,
+    // so that window can be generous without ever affecting steering.
     @State private var lastTapAt: Date = .distantPast
     @State private var lastTapCol: Int = -1
-    @State private var pendingTap: DispatchWorkItem?
-    // Long enough to catch a natural double-tap, short enough that a single
-    // steer tap still feels prompt. This is the one dial for the feel.
-    private let doubleTapWindow: TimeInterval = 0.22
+    private let doubleTapWindow: TimeInterval = 0.32
     // Short-lived shard bursts, one per tile of a just-cleared word, so a
     // clear reads as the tiles bursting apart rather than blinking out.
     @State private var shardBursts: [ClearShardBurst] = []
@@ -495,7 +490,7 @@ struct PlayingView: View {
                         Image(systemName: "hand.tap.fill")
                             .font(.system(size: 16, weight: .bold))
                         Text(model.tutorialStep == 0 ?
-                             "TAP LEFT OR RIGHT TO STEER — OR JUST LET IT FALL" :
+                             "TAP LEFT OR RIGHT TO STEER · SWIPE DOWN TO DROP" :
                              "IT'S GLOWING! DOUBLE-TAP IT TO CLEAR")
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .multilineTextAlignment(.leading)
@@ -753,9 +748,18 @@ struct PlayingView: View {
                                 model.updateSoftDropSpeed(velocity: value.velocity.height)
                             }
                         }
-                        .onEnded { _ in
+                        .onEnded { value in
                             boardDragAccum = 0
                             model.endSoftDrop()
+                            // A decisive downward swipe hard-drops the piece —
+                            // the deliberate, unambiguous replacement for the
+                            // old double-tap-to-drop. Must be clearly vertical
+                            // and travel a few tiles so a small soft-drop nudge
+                            // never triggers it.
+                            if value.translation.height > tileSize * 3,
+                               abs(value.translation.width) < abs(value.translation.height) {
+                                model.dropFast()
+                            }
                         }
                 )
 
@@ -1237,50 +1241,34 @@ struct PlayingView: View {
             isPreviewHighlighted: previewedPositions.contains("\(row),\(col)"),
             justLanded: model.lastLandedCell == GridPos(row: row, col: col)
         )
-        // Tap controls, arrow-key style: a single tap on the left half of the
-        // board nudges the piece one column left, the right half nudges it
-        // right. A quick SECOND tap (same or adjacent column) is a "double
-        // tap": clear a glowing tile, or hard-drop otherwise. The single-tap
-        // action is DEFERRED by doubleTapWindow so a double-tap cancels it
-        // before it runs — the piece never nudges toward the tap before
-        // dropping (the old "pre-nudge" bug). One tap gesture with manual
-        // timing rather than TapGesture(count:2), which demanded a too-fast,
-        // pixel-tight double tap and often failed.
+        // Tap controls, arrow-key style. Steering is INSTANT: a tap on the
+        // left half moves the piece one column left, the right half one right —
+        // no delay, no double-tap ambiguity, because hard-drop is a downward
+        // swipe now (see the board drag gesture). A tap on a GLOWING tile
+        // instead previews its word, and a quick second tap on it clears the
+        // word (this never moves the piece, so its timing can't affect steering).
         .gesture(
             TapGesture(count: 1).onEnded {
-                let now = Date()
-                let isSecond = now.timeIntervalSince(lastTapAt) < doubleTapWindow && abs(lastTapCol - col) <= 1
-                if isSecond {
-                    // Second tap of a double: cancel the still-pending single
-                    // tap (nothing has moved) and drop / clear in place.
-                    pendingTap?.cancel()
-                    pendingTap = nil
-                    lastTapAt = .distantPast
-                    lastTapCol = -1
-                    let isFalling = (row == model.fallingRow && col == model.fallingCol)
-                    if !isFalling, model.grid[row][col]?.glowingWordID != nil {
-                        model.doubleTapClear(row: row, col: col)
+                if model.grid[row][col]?.glowingWordID != nil {
+                    let now = Date()
+                    if now.timeIntervalSince(lastTapAt) < doubleTapWindow && lastTapCol == col {
+                        lastTapAt = .distantPast
+                        lastTapCol = -1
+                        model.doubleTapClear(row: row, col: col)   // clear the word
                     } else {
-                        model.dropFast()   // current column — no nudge ever happened
+                        lastTapAt = now
+                        lastTapCol = col
+                        showWordPreview(row: row, col: col)         // preview it
                     }
                 } else {
-                    // Possibly the first tap of a double: DEFER the move/preview
-                    // so a fast second tap can cancel it before it runs.
-                    lastTapAt = now
-                    lastTapCol = col
-                    pendingTap?.cancel()
-                    let work = DispatchWorkItem {
-                        if model.grid[row][col]?.glowingWordID != nil {
-                            showWordPreview(row: row, col: col)
-                        } else if col < GameConstants.cols / 2 {
-                            model.moveLeft()
-                        } else {
-                            model.moveRight()
-                        }
-                        pendingTap = nil
+                    // Plain steer — fire immediately.
+                    lastTapAt = .distantPast
+                    lastTapCol = -1
+                    if col < GameConstants.cols / 2 {
+                        model.moveLeft()
+                    } else {
+                        model.moveRight()
                     }
-                    pendingTap = work
-                    DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
                 }
             }
         )
@@ -2136,8 +2124,8 @@ struct MenuView: View {
                             .foregroundColor(.lexisText.opacity(0.85))
                     }
                 }
-                HowToRow(icon: "arrow.left.arrow.right", text: "Tap the left or right of the board to steer — or slide to fling")
-                HowToRow(icon: "hand.tap", text: "Double-tap a glowing tile to clear its word — any direction")
+                HowToRow(icon: "arrow.left.arrow.right", text: "Tap left or right to steer — swipe down to drop")
+                HowToRow(icon: "hand.tap", text: "Double-tap a glowing tile to clear its word")
                 HowToRow(icon: "star.fill", color: .lexisGold, text: "Golden blocks = wildcards. Pick any letter!")
             }
             .padding(20)
