@@ -54,6 +54,9 @@ final class WeeklyEventManager: ObservableObject {
             UserDefaults.standard.set(true, forKey: Self.playedKey(event.id))
             // One-time coin reward per event for participating.
             PlayerProfile.shared.addCoins(event.coinReward)
+            // Playing the event also unlocks the event-exclusive "Bloom" burst
+            // — a cosmetic you can't buy with coins, only earn here.
+            CosmeticsStore.shared.grantCosmetic(id: BurstStyle.bloom.cosmeticID)
         }
         if score > bestScore {
             bestScore = score

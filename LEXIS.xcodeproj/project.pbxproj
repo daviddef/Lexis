@@ -30,6 +30,7 @@
 		BA955C0F8779B4AB97F1E7CD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A89042EB531104FA876E293 /* DesignSystem.swift */; };
 		E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558A47F9FA6805DCB595B6AC /* ProgressionView.swift */; };
 		E843E560313C70E8938C9444 /* WeeklyEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */; };
+		EBE37653B3940A9FA28CE64C /* Cosmetics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CF096A3FC1D1ED37154710 /* Cosmetics.swift */; };
 		EE45B88E95247461679DC106 /* AdManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9908256FAF5E84C14FE73E4E /* AdManager.swift */; };
 		EF8DD689A9F53C5839D3012C /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263C4CFFE7701C755DB6E37E /* SplashView.swift */; };
 		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -74,6 +75,7 @@
 		6A3E643DB65640DCA73650FD /* LexisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidget.swift; sourceTree = "<group>"; };
 		6ABC1D336958A957F66B201E /* CosmeticsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosmeticsStore.swift; sourceTree = "<group>"; };
 		6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		78CF096A3FC1D1ED37154710 /* Cosmetics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cosmetics.swift; sourceTree = "<group>"; };
 		7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		8A89042EB531104FA876E293 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		8DEE69FA2CB4882A3BF24C6C /* Progression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Progression.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 				9908256FAF5E84C14FE73E4E /* AdManager.swift */,
 				9BCA92EFAF6939161B4B302F /* Analytics.swift */,
 				C1397824B81287256A25848F /* Assets.xcassets */,
+				78CF096A3FC1D1ED37154710 /* Cosmetics.swift */,
 				6ABC1D336958A957F66B201E /* CosmeticsStore.swift */,
 				35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */,
 				3B17DD68C79088619B3469EB /* DataMigration.swift */,
@@ -268,6 +271,7 @@
 			files = (
 				EE45B88E95247461679DC106 /* AdManager.swift in Sources */,
 				58E8A642B2F1780A790EE1DE /* Analytics.swift in Sources */,
+				EBE37653B3940A9FA28CE64C /* Cosmetics.swift in Sources */,
 				0812DFB0A2BF5713E4152A70 /* CosmeticsStore.swift in Sources */,
 				A25D96B0B34FD628BED9BACE /* DailyChallengeManager.swift in Sources */,
 				3874283E9BF9188B2B46A617 /* DataMigration.swift in Sources */,

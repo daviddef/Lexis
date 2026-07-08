@@ -197,6 +197,11 @@ class GameSettings: ObservableObject {
     @Published var tileTheme: TileTheme {
         didSet { UserDefaults.standard.set(tileTheme.rawValue, forKey: "lexisTileTheme") }
     }
+    // The equipped clear-burst cosmetic (see BurstStyle) — what plays on every
+    // word clear.
+    @Published var equippedBurst: BurstStyle {
+        didSet { UserDefaults.standard.set(equippedBurst.rawValue, forKey: "lexisEquippedBurst") }
+    }
     @Published var hasSeenTutorial: Bool {
         didSet { UserDefaults.standard.set(hasSeenTutorial, forKey: "lexisHasSeenTutorial") }
     }
@@ -217,6 +222,7 @@ class GameSettings: ObservableObject {
         self.winbackEnabled = UserDefaults.standard.object(forKey: "lexisNotifWinback") as? Bool ?? true
         let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
         self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
+        self.equippedBurst = BurstStyle(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBurst") ?? "") ?? .shards
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
 
         // Republish when the SYSTEM reduce-motion setting flips mid-session so
@@ -1822,11 +1828,15 @@ class GameModel: ObservableObject {
     // run deserved the same, not just one of five modes.
     func endlessShareText() -> String {
         let longest = foundWords.map { $0.word }.max(by: { $0.count < $1.count }) ?? ""
+        // Flair: the player's account level + daily streak, so a shared score
+        // also shows off how invested they are.
+        var flair = "Lvl \(PlayerProfile.shared.level)"
+        if dailyManager.currentStreak > 0 { flair += " · 🔥 \(dailyManager.currentStreak)-day streak" }
         var lines = [
             "LEXIS — \(settings.difficulty.rawValue.uppercased())",
             "Score: \(score)",
             "Words: \(foundWords.count)" + (longest.isEmpty ? "" : " (longest: \(longest.uppercased()))"),
-            "Level \(level)"
+            flair
         ]
         lines.append("")
         lines.append("Play LEXIS — one letter at a time.")

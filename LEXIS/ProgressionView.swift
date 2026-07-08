@@ -325,14 +325,26 @@ struct CollectionView: View {
                         .buttonStyle(LexisScaleButtonStyle())
                     }
 
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(TileTheme.allCases) { theme in
-                            ThemeCard(theme: theme)
-                        }
+                    collectionSection("TILE THEMES") {
+                        ForEach(TileTheme.allCases) { theme in ThemeCard(theme: theme) }
+                    }
+
+                    collectionSection("CLEAR BURSTS") {
+                        ForEach(BurstStyle.allCases) { burst in BurstCard(burst: burst) }
                     }
                 }
                 .padding(20)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func collectionSection<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundColor(.lexisMid).tracking(1.5)
+            LazyVGrid(columns: columns, spacing: 12) { content() }
         }
     }
 }
@@ -406,6 +418,106 @@ struct ThemeCard: View {
             .font(.system(size: 12, weight: .black, design: .rounded))
             .foregroundColor(filled ? .lexisBg : color)
             .padding(.horizontal, 14).padding(.vertical, 7)
+            .background(Capsule().fill(filled ? color : color.opacity(0.15)))
+    }
+}
+
+/// A small static preview of a burst — its particles frozen mid-spread — for
+/// the collection card.
+struct BurstPreview: View {
+    let burst: BurstStyle
+    var size: CGFloat = 56
+
+    private func color(_ i: Int) -> Color {
+        if let p = burst.palette, !p.isEmpty { return p[i % p.count] }
+        return .yellow
+    }
+
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.yellow.opacity(0.25)).frame(width: size * 0.3, height: size * 0.3)
+            ForEach(0..<burst.count, id: \.self) { i in
+                let angle = (Double(i) / Double(burst.count)) * 2 * .pi + 0.4
+                shape(i)
+                    .offset(x: CGFloat(cos(angle)) * size * 0.32, y: CGFloat(sin(angle)) * size * 0.32)
+                    .rotationEffect(burst.shape == .spark ? .radians(angle + .pi / 2) : .degrees(burst.spin * 0.4))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    @ViewBuilder private func shape(_ i: Int) -> some View {
+        let c = color(i)
+        switch burst.shape {
+        case .shard:  RoundedRectangle(cornerRadius: 1.5, style: .continuous).fill(c).frame(width: size * 0.14, height: size * 0.14)
+        case .circle: Circle().fill(c).frame(width: size * 0.13, height: size * 0.13)
+        case .spark:  Capsule().fill(c).frame(width: size * 0.05, height: size * 0.3)
+        case .petal:  RoundedRectangle(cornerRadius: size * 0.06, style: .continuous).fill(c).frame(width: size * 0.12, height: size * 0.2)
+        }
+    }
+}
+
+/// A collection card for a clear-burst cosmetic: preview + equip / buy / event.
+struct BurstCard: View {
+    let burst: BurstStyle
+    @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var profile = PlayerProfile.shared
+    @ObservedObject private var store = CosmeticsStore.shared
+
+    private var unlocked: Bool { store.isBurstUnlocked(burst) }
+    private var equipped: Bool { settings.equippedBurst == burst }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            BurstPreview(burst: burst, size: 58).padding(.top, 4)
+            Text(burst.displayName)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundColor(.lexisText)
+            action
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14).padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.lexisBlock.opacity(0.6))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(equipped ? Color.lexisAccent : Color.clear, lineWidth: 2))
+        )
+    }
+
+    @ViewBuilder private var action: some View {
+        if equipped {
+            pill("EQUIPPED", color: .lexisAccent, filled: true)
+        } else if unlocked {
+            Button {
+                settings.equippedBurst = burst
+                Haptics.light()
+            } label: { pill("EQUIP", color: .lexisAccent, filled: false) }
+        } else if burst.isEventExclusive {
+            pill("WEEKLY EVENT", color: .lexisGold, filled: false)
+        } else {
+            Button {
+                if store.buyCosmetic(id: burst.cosmeticID, price: burst.coinPrice) {
+                    settings.equippedBurst = burst
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "circle.hexagongrid.fill").font(.system(size: 11, weight: .bold))
+                    Text("\(burst.coinPrice)").font(.system(size: 13, weight: .black, design: .rounded))
+                }
+                .foregroundColor(profile.canAfford(burst.coinPrice) ? .lexisBg : .lexisMid)
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .background(Capsule().fill(profile.canAfford(burst.coinPrice) ? Color.lexisGold : Color.lexisBlockBorder.opacity(0.4)))
+            }
+            .disabled(!profile.canAfford(burst.coinPrice))
+        }
+    }
+
+    private func pill(_ text: String, color: Color, filled: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .black, design: .rounded))
+            .foregroundColor(filled ? .lexisBg : color)
+            .padding(.horizontal, 12).padding(.vertical, 7)
             .background(Capsule().fill(filled ? color : color.opacity(0.15)))
     }
 }

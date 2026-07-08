@@ -74,4 +74,32 @@ final class CosmeticsStore: ObservableObject {
         seen.insert(theme.rawValue)
         UserDefaults.standard.set(Array(seen), forKey: "lexisSeenUnlockedThemes")
     }
+
+    // MARK: - Generic cosmetics (bursts, backdrops, …)
+    // Ownership is keyed by each item's namespaced `cosmeticID` in the same
+    // owned-set as themes (ids like "burst.embers" never collide with a theme
+    // rawValue like "Forest").
+
+    func isOwned(_ cosmeticID: String) -> Bool { purchased.contains(cosmeticID) }
+
+    /// Grant a cosmetic by id (from a coin buy, or a weekly-event reward).
+    func grantCosmetic(id: String) {
+        guard !purchased.contains(id) else { return }
+        purchased.insert(id)
+        UserDefaults.standard.set(Array(purchased), forKey: "lexisPurchasedThemes")
+    }
+
+    /// Buy a cosmetic with coins. Returns false if owned or unaffordable.
+    @discardableResult
+    func buyCosmetic(id: String, price: Int) -> Bool {
+        guard !purchased.contains(id), price > 0, PlayerProfile.shared.spendCoins(price) else { return false }
+        grantCosmetic(id: id)
+        Analytics.shared.track(.init("cosmetic_bought", ["id": id, "coins": "\(price)"]))
+        return true
+    }
+
+    /// Bursts: the default is always owned; others must be bought or won.
+    func isBurstUnlocked(_ style: BurstStyle) -> Bool {
+        style.isDefault || purchased.contains(style.cosmeticID)
+    }
 }

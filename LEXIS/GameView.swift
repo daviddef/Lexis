@@ -833,7 +833,7 @@ struct PlayingView: View {
                 if !shardBursts.isEmpty {
                     ZStack(alignment: .topLeading) {
                         ForEach(shardBursts) { burst in
-                            ClearShardView(tileSize: tileSize, color: burst.color)
+                            ClearShardView(tileSize: tileSize, color: burst.color, style: model.settings.equippedBurst)
                                 .position(
                                     x: CGFloat(burst.col) * (tileSize + 2) + tileSize / 2,
                                     y: CGFloat(burst.row) * (tileSize + 2) + tileSize / 2
@@ -2975,43 +2975,62 @@ struct ClearShardBurst: Identifiable {
     let color: Color
 }
 
-// A quick shard burst played where a tile was cleared: a bright flash plus a
-// handful of shards flung outward and fading. Smaller and faster than the
-// bomb blast — this fires many at once (one per cleared tile), so it stays
-// light. Draws beyond its cell bounds on purpose (no clip).
+// A quick burst played where a tile was cleared: a bright flash plus a
+// handful of particles flung outward and fading. Its look is driven by the
+// equipped BurstStyle (a cosmetic) — shards, embers, sparks, petals, bloom.
+// Fires many at once (one per cleared tile), so it stays light. Draws beyond
+// its cell bounds on purpose (no clip).
 struct ClearShardView: View {
     let tileSize: CGFloat
     let color: Color
+    var style: BurstStyle = .shards
     @State private var go = false
 
-    private let shards = 6
+    private func particleColor(_ i: Int) -> Color {
+        guard let palette = style.palette, !palette.isEmpty else { return color }
+        return palette[i % palette.count]
+    }
 
     var body: some View {
         ZStack {
-            // Core flash
+            // Core flash — shared by every style.
             Circle()
                 .fill(color)
                 .frame(width: tileSize * 0.9, height: tileSize * 0.9)
                 .scaleEffect(go ? 1.3 : 0.4)
                 .opacity(go ? 0 : 0.9)
 
-            // Shards
-            ForEach(0..<shards, id: \.self) { i in
-                let angle = (Double(i) / Double(shards)) * 2 * .pi + 0.4
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(color)
-                    .frame(width: tileSize * 0.2, height: tileSize * 0.2)
+            ForEach(0..<style.count, id: \.self) { i in
+                let angle = (Double(i) / Double(style.count)) * 2 * .pi + 0.4
+                particle(i)
                     .offset(
-                        x: go ? CGFloat(cos(angle)) * tileSize * 1.15 : 0,
-                        y: go ? CGFloat(sin(angle)) * tileSize * 1.15 : 0
+                        x: go ? CGFloat(cos(angle)) * tileSize * style.spread : 0,
+                        y: go ? CGFloat(sin(angle)) * tileSize * style.spread + tileSize * style.drift : 0
                     )
-                    .rotationEffect(.degrees(go ? 140 : 0))
+                    .rotationEffect(style.shape == .spark ? .radians(angle + .pi / 2) : .degrees(go ? style.spin : 0))
                     .opacity(go ? 0 : 1)
-                    .scaleEffect(go ? 0.4 : 1)
+                    .scaleEffect(go ? (style.shape == .circle ? 0.6 : 0.4) : 1)
             }
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.55)) { go = true }
+        }
+    }
+
+    @ViewBuilder private func particle(_ i: Int) -> some View {
+        let c = particleColor(i)
+        switch style.shape {
+        case .shard:
+            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                .fill(c).frame(width: tileSize * 0.2, height: tileSize * 0.2)
+        case .circle:
+            Circle().fill(c).frame(width: tileSize * 0.18, height: tileSize * 0.18)
+                .shadow(color: c.opacity(0.6), radius: 3)
+        case .spark:
+            Capsule().fill(c).frame(width: tileSize * 0.06, height: tileSize * 0.42)
+        case .petal:
+            RoundedRectangle(cornerRadius: tileSize * 0.08, style: .continuous)
+                .fill(c).frame(width: tileSize * 0.16, height: tileSize * 0.28)
         }
     }
 }
