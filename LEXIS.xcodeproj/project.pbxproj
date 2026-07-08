@@ -31,6 +31,7 @@
 		E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558A47F9FA6805DCB595B6AC /* ProgressionView.swift */; };
 		E843E560313C70E8938C9444 /* WeeklyEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */; };
 		EE45B88E95247461679DC106 /* AdManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9908256FAF5E84C14FE73E4E /* AdManager.swift */; };
+		EF8DD689A9F53C5839D3012C /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263C4CFFE7701C755DB6E37E /* SplashView.swift */; };
 		F03E9BBF1E2E565D95DA1968 /* LexisWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A36F2ADBC5937F5C5D023B1A /* LexisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -60,6 +61,7 @@
 
 /* Begin PBXFileReference section */
 		11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileTheme.swift; sourceTree = "<group>"; };
+		263C4CFFE7701C755DB6E37E /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		3447805539796661F1B3F20A /* LexisWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexisWidgetBundle.swift; sourceTree = "<group>"; };
 		35C0ABE9427A5200D82F6C97 /* DailyChallengeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyChallengeManager.swift; sourceTree = "<group>"; };
 		3B17DD68C79088619B3469EB /* DataMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMigration.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				558A47F9FA6805DCB595B6AC /* ProgressionView.swift */,
 				91BD40CA77F62987EA453C39 /* SettingsView.swift */,
 				4004408499B751AFCEEFF955 /* SoundManager.swift */,
+				263C4CFFE7701C755DB6E37E /* SplashView.swift */,
 				11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */,
 				3B6D94CA5A9BC9F218867540 /* WeeklyEventManager.swift */,
 				60955C1DCA414344FD85AE91 /* WeeklyEventViews.swift */,
@@ -280,6 +283,7 @@
 				E66206CD06DFBB3BA848C510 /* ProgressionView.swift in Sources */,
 				9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */,
 				1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */,
+				EF8DD689A9F53C5839D3012C /* SplashView.swift in Sources */,
 				55BF02CB5B5582E9AFD5E6AA /* TileTheme.swift in Sources */,
 				E843E560313C70E8938C9444 /* WeeklyEventManager.swift in Sources */,
 				AAA64D6785B01FEE8144A1E5 /* WeeklyEventViews.swift in Sources */,

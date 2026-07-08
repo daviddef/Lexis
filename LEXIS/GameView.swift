@@ -26,6 +26,7 @@ struct GameView: View {
     @ObservedObject private var goals = GoalsManager.shared
     @ObservedObject private var cosmetics = CosmeticsStore.shared
     @State private var celebration: CelebrationItem?
+    @State private var showSplash = true
     @State private var showWildcardPicker = false
     @State private var selectedTiles: [(row: Int, col: Int)] = []
     @State private var wordFlashText: String = ""
@@ -182,6 +183,18 @@ struct GameView: View {
                     .ignoresSafeArea()
                     .transition(.opacity)
                     .animation(.easeOut(duration: 0.25), value: model.comboCount)
+                }
+            }
+            // Branded intro on cold launch — covers everything, then dissolves
+            // to the menu. Because showSplash is view @State, it only appears
+            // on a fresh launch, not on resume.
+            .overlay {
+                if showSplash {
+                    SplashView {
+                        withAnimation(.easeInOut(duration: 0.55)) { showSplash = false }
+                    }
+                    .transition(.opacity)
+                    .zIndex(100)
                 }
             }
             .sheet(isPresented: $showSettings) {
