@@ -1045,6 +1045,19 @@ class GameModel: ObservableObject {
         placeLetter()
     }
 
+    /// Hard-drop, first restoring the piece to `col` if it's free at the
+    /// current row. Used by double-tap: the tap gesture's FIRST tap nudges the
+    /// piece one column, so a double-tap passes the pre-nudge column here to
+    /// cancel that nudge — the piece drops straight down where it actually was,
+    /// not one column over in the direction of the tap.
+    func dropFast(inColumn col: Int) {
+        guard phase == .playing else { return }
+        if col >= 0, col < GameConstants.cols, grid[fallingRow][col] == nil {
+            fallingCol = col
+        }
+        dropFast()
+    }
+
     // MARK: - Soft drop
     // Dragging downward accelerates the fall rather than instantly slamming
     // to the bottom (that's dropFast/double-tap). This gives players a

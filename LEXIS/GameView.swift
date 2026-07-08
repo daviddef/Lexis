@@ -263,7 +263,12 @@ struct PlayingView: View {
     // slide's job, so single taps being one-column nudges is fine.
     @State private var lastTapAt: Date = .distantPast
     @State private var lastTapCol: Int = -1
-    private let doubleTapWindow: TimeInterval = 0.45
+    // The falling piece's column BEFORE the last single-tap nudged it, so a
+    // double-tap can cancel that nudge and drop straight down in place.
+    @State private var colBeforeLastNudge: Int = -1
+    // Tight enough that deliberate steering taps (spaced apart) each move,
+    // loose enough that a natural quick double-tap still registers as a drop.
+    private let doubleTapWindow: TimeInterval = 0.3
     // Short-lived shard bursts, one per tile of a just-cleared word, so a
     // clear reads as the tiles bursting apart rather than blinking out.
     @State private var shardBursts: [ClearShardBurst] = []
@@ -1192,17 +1197,16 @@ struct PlayingView: View {
         )
         // Tap controls, arrow-key style: a single tap on the left half of the
         // board nudges the piece one column left, the right half nudges it
-        // right. Tapping a glowing tile previews its word. A SECOND tap in the
-        // same column, within doubleTapWindow, is a "double tap": it clears a
-        // glowing tile, or hard-drops otherwise. This is one tap gesture with
-        // manual timing rather than TapGesture(count:2).exclusively(...),
+        // right — instantly, so steering never lags. A SECOND tap in the same
+        // or adjacent column within doubleTapWindow is a "double tap": clear a
+        // glowing tile, or hard-drop otherwise. Crucially the double-tap
+        // CANCELS the first tap's nudge (via dropFast(inColumn:)) so a double
+        // tap just drops in place instead of drifting a column toward the tap.
+        // One tap gesture with manual timing rather than TapGesture(count:2),
         // which required a too-fast, pixel-tight double tap and often failed.
-        // The single-tap action still fires instantly, so steering never lags.
         .gesture(
             TapGesture(count: 1).onEnded {
                 let now = Date()
-                // Same or adjacent column tolerates a little finger drift
-                // between the two taps of a drop, which pure same-column didn't.
                 let isDouble = now.timeIntervalSince(lastTapAt) < doubleTapWindow && abs(lastTapCol - col) <= 1
                 if isDouble {
                     // Consume so a third quick tap starts a fresh sequence.
@@ -1212,17 +1216,25 @@ struct PlayingView: View {
                     if !isFalling, model.grid[row][col]?.glowingWordID != nil {
                         model.doubleTapClear(row: row, col: col)
                     } else {
-                        model.dropFast()
+                        // Undo the first tap's nudge and drop where the piece
+                        // actually was.
+                        model.dropFast(inColumn: colBeforeLastNudge)
                     }
                 } else {
                     lastTapAt = now
                     lastTapCol = col
                     if model.grid[row][col]?.glowingWordID != nil {
                         showWordPreview(row: row, col: col)
-                    } else if col < GameConstants.cols / 2 {
-                        model.moveLeft()
+                        colBeforeLastNudge = -1   // preview didn't move the piece
                     } else {
-                        model.moveRight()
+                        // Remember where the piece was before this nudge, so a
+                        // follow-up tap (a double) can cancel it.
+                        colBeforeLastNudge = model.fallingCol
+                        if col < GameConstants.cols / 2 {
+                            model.moveLeft()
+                        } else {
+                            model.moveRight()
+                        }
                     }
                 }
             }
