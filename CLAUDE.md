@@ -118,7 +118,7 @@ config work:
 | `ProgressionView.swift` | Progress sheet, level chip, goal rows, `CollectionView`/`ThemeCard` shop UI, celebration toast |
 | `CosmeticsStore.swift` | Owns theme ownership (milestone OR coin buy); one grant sink shared with StoreKit; milestone-unlock celebration |
 | `WeeklyEventManager.swift` + `WeeklyEventViews.swift` | Weekly Challenge / Weekend Sprint event on the seeded-sequence engine + result screen |
-| `StoreManager.swift` + `Products.storekit` | StoreKit 2 cosmetic shop (Supporter bundle + per-theme). Needs App Store Connect products to transact; `.storekit` is for local sim testing |
+| `AdManager.swift` | Network-agnostic **rewarded** ads (opt-in only; never interstitials). DEBUG stub makes the watch→reward flow testable with no SDK. Four placements: Endless boost, coins, on-demand charge (mid-run), revive. Needs an AdMob/AppLovin provider to serve real ads |
 | `DataMigration.swift` | Schema-version stamp + ordered migration runner (run before any manager reads defaults) |
 | `Assets.xcassets/AppIcon.appiconset` | Complete app icon set, all required sizes pre-rendered, matching the in-game tile's bevel/gradient look |
 | `Resources/lexis_dictionary.txt` | ~105,000-word dictionary (ENABLE1-derived, 3-9 letters), loaded at runtime by `WordValidator` in `GameModel.swift` |
@@ -172,11 +172,14 @@ The 2.0 retention/revenue systems are code-complete and build clean, but a
 few things require your Apple accounts / hardware (they degrade gracefully
 until then — the app runs fine with none of these configured):
 
-- **App Store Connect IAP products** — create the products in
-  `StoreManager.ProductID` (supporter bundle + per-theme) with prices/
-  banking/tax. Until they exist, the shop UI is hidden and the coin economy
-  carries the collection. `Products.storekit` lets you test locally: attach
-  it to the run scheme in Xcode (Scheme ▸ Run ▸ Options ▸ StoreKit Config).
+- **Monetization is ads-only (rewarded), NOT IAP.** The StoreKit shop was
+  removed in favour of opt-in rewarded ads. To serve real ads: create an
+  AdMob (or AppLovin) app + a *rewarded* ad unit, add the SDK as a Swift
+  Package, implement `RewardedAdProvider` around it, add an App Tracking
+  Transparency + consent prompt (changes the privacy nutrition label), and
+  pass the provider to `AdManager.shared.configure(_:)` in `LexisApp`. Until
+  then a DEBUG stub makes the watch→reward flow testable and release builds
+  simply show no ads. Rewarded-only, never interstitials.
 - **Weekly Game Center leaderboard** — create board id
   `lexis_leaderboard_weekly` in App Store Connect (submits no-op until then).
 - **Analytics vendor** — recommend TelemetryDeck; attach in
