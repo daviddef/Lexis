@@ -49,6 +49,10 @@ targets:
         # this up front means App Store Connect stops asking the export
         # compliance question interactively on every single upload.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        # Shown in the App Tracking Transparency prompt once rewarded ads
+        # (AdMob/AppLovin) are wired in. Required by Apple before requesting
+        # the advertising identifier; harmless to declare ahead of the SDK.
+        INFOPLIST_KEY_NSUserTrackingUsageDescription: "LEXIS uses this to show you more relevant ads. You can play with non-personalized ads instead — your choice."
 
   # Home Screen widget showing the Daily Challenge streak and whether
   # today's puzzle is done. Reads the same App Group container the main app

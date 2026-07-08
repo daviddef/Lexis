@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEXIS — One letter. One word. One life.</title>
+<meta name="description" content="LEXIS is a word-puzzle game where a single lettered tile falls and you form words in any of 8 directions. Daily challenges, weekly events, and more.">
+<style>
+  :root{
+    --ground:#0B0B14; --slate:#161A28; --slate-2:#1B2033; --line:#2A3350;
+    --mint:#66E5B3; --gold:#FFD24D; --text:#F2F2FF; --mid:#8FA2CC; --dim:#5C6B92;
+    --disp:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,"Segoe UI",sans-serif;
+    --body:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"Roboto Mono",monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #12162A 0, transparent 60%),
+      radial-gradient(90% 60% at 50% -5%, rgba(102,229,179,.06) 0, transparent 55%),
+      var(--ground);
+    color:var(--text); font-family:var(--body); line-height:1.65;
+    -webkit-font-smoothing:antialiased; padding:0 1.25rem 4rem;
+  }
+  .wrap{max-width:56rem; margin:0 auto}
+  a{color:var(--mint)}
+
+  .tile{display:inline-grid; place-items:center; width:var(--sz,3.4rem); height:var(--sz,3.4rem);
+    border-radius:calc(var(--sz,3.4rem)*.2); font-family:var(--disp); font-weight:900;
+    font-size:calc(var(--sz,3.4rem)*.5); color:#0A0C12;
+    background:linear-gradient(158deg,color-mix(in srgb,var(--mint) 78%,#fff),var(--mint) 46%,color-mix(in srgb,var(--mint) 62%,#000));
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -3px 0 rgba(0,0,0,.34),0 7px 16px rgba(0,0,0,.5)}
+
+  header{padding:4.5rem 0 2.5rem; text-align:center}
+  .tilerow{display:flex; gap:.55rem; justify-content:center; flex-wrap:wrap}
+  h1{font-family:var(--disp); font-weight:900; font-size:clamp(2.4rem,7vw,4rem); letter-spacing:-.02em; margin:1.4rem 0 0}
+  .tagline{font-family:var(--mono); font-size:.8rem; letter-spacing:.24em; text-transform:uppercase; color:var(--mid); margin:.7rem 0 0}
+  .lede{max-width:40rem; margin:1.3rem auto 0; color:#C9D3EE; font-size:1.15rem}
+  .cta{display:inline-flex; align-items:center; gap:.6rem; margin-top:1.8rem; padding:.85rem 1.6rem;
+    background:var(--mint); color:#08110C; border-radius:14px; text-decoration:none; font-family:var(--disp); font-weight:800; font-size:1.05rem;
+    box-shadow:0 10px 26px rgba(102,229,179,.28)}
+  .cta small{display:block; font-size:.62rem; font-weight:600; opacity:.7; letter-spacing:.05em}
+
+  section{padding:2.5rem 0; border-top:1px solid rgba(42,51,80,.5)}
+  h2{font-family:var(--disp); font-weight:800; font-size:1.6rem; letter-spacing:-.01em; margin:0 0 1.2rem}
+  .grid{display:grid; gap:.9rem; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))}
+  .card{background:linear-gradient(180deg,var(--slate-2),var(--slate)); border:1px solid var(--line); border-radius:16px; padding:1.15rem 1.25rem}
+  .card h3{font-family:var(--disp); font-weight:800; font-size:1.1rem; margin:0 0 .3rem}
+  .card p{color:#AFBBDD; font-size:.98rem; margin:0}
+  .card .em{font-size:1.5rem}
+
+  footer{padding:2.5rem 0 0; border-top:1px solid rgba(42,51,80,.5); text-align:center; color:var(--dim); font-family:var(--mono); font-size:.78rem; letter-spacing:.06em}
+  footer a{color:var(--mid); margin:0 .6rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="tilerow">
+      <span class="tile">L</span><span class="tile">E</span><span class="tile">X</span><span class="tile">I</span><span class="tile">S</span>
+    </div>
+    <h1>The word game that finally moves.</h1>
+    <p class="tagline">One letter · One word · One life</p>
+    <p class="lede">A single lettered tile falls. You steer it. Instead of clearing rows, you form words that read in any of <b>eight directions</b> — across, down, and along both diagonals. Find them, clear them, and keep the board from filling.</p>
+    <!-- Replace href with your App Store link once the app is approved. -->
+    <a class="cta" href="#">Download on the App&nbsp;Store <small>COMING SOON</small></a>
+  </header>
+
+  <section>
+    <h2>What makes it different</h2>
+    <div class="grid">
+      <div class="card"><div class="em">↘</div><h3>Words read 8 ways</h3><p>Across, down, and along both diagonals. A tile you place can complete words in directions you didn't even plan.</p></div>
+      <div class="card"><div class="em">🎮</div><h3>You steer the fall</h3><p>Tap to nudge the falling letter, slide to fling it across the board, double-tap to drop. Real control, not luck.</p></div>
+      <div class="card"><div class="em">🧩</div><h3>Side-sticking & power-ups</h3><p>Catch a tower's edge to build at height. Earn bombs, tips, freeze, reroll and peek by playing well.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Play your way</h2>
+    <div class="grid">
+      <div class="card"><div class="em">📅</div><h3>Daily Challenge</h3><p>The same 40 letters for everyone, once a day. Build a streak and compare with the world.</p></div>
+      <div class="card"><div class="em">🏆</div><h3>Weekly & Weekend events</h3><p>A fresh seeded challenge every week — plus a higher-stakes Weekend Sprint — on shared leaderboards.</p></div>
+      <div class="card"><div class="em">⚡</div><h3>Endless, four speeds</h3><p>Relaxed to Insane. Chase your best, earn XP, complete daily goals, and collect tile themes.</p></div>
+      <div class="card"><div class="em">👥</div><h3>Duel a friend</h3><p>Send a code, play the identical letters, compare scores. Same puzzle, best word-finder wins.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      <a href="privacy.html">Privacy Policy</a> ·
+      <a href="mailto:hello@lexisgame.app">Support</a>
+    </p>
+    <p style="margin-top:.6rem">© 2026 David Defranceski · LEXIS</p>
+  </footer>
+
+</div>
+</body>
+</html>
