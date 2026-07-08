@@ -105,3 +105,65 @@ enum BurstStyle: String, CaseIterable, Codable, Identifiable {
         }
     }
 }
+
+// MARK: - Board backdrop
+
+/// A subtle, always-on-screen layer behind the board. Static (no animation),
+/// so it stays performant and reduce-motion-safe. `none` is the default plain
+/// look; the rest are coin-buyable cosmetics.
+enum BoardBackdrop: String, CaseIterable, Codable, Identifiable {
+    case none, dusk, mint, ember, grid
+
+    var id: String { rawValue }
+    var cosmeticID: String { "backdrop.\(rawValue)" }
+    var isDefault: Bool { self == .none }
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .dusk: return "Dusk"
+        case .mint: return "Mint Glow"
+        case .ember: return "Ember"
+        case .grid: return "Neon Grid"
+        }
+    }
+    var coinPrice: Int {
+        switch self {
+        case .none: return 0
+        case .dusk, .mint: return 150
+        case .ember, .grid: return 200
+        }
+    }
+}
+
+/// Renders a BoardBackdrop full-screen behind the game content.
+struct BoardBackdropView: View {
+    let style: BoardBackdrop
+
+    var body: some View {
+        switch style {
+        case .none:
+            Color.clear
+        case .dusk:
+            LinearGradient(colors: [Color(red: 0.16, green: 0.10, blue: 0.28), .clear],
+                           startPoint: .top, endPoint: .center).ignoresSafeArea()
+        case .mint:
+            RadialGradient(colors: [Color.lexisAccent.opacity(0.14), .clear],
+                           center: .center, startRadius: 8, endRadius: 420).ignoresSafeArea()
+        case .ember:
+            LinearGradient(colors: [.clear, Color(red: 0.5, green: 0.18, blue: 0.06).opacity(0.5)],
+                           startPoint: .center, endPoint: .bottom).ignoresSafeArea()
+        case .grid:
+            GeometryReader { geo in
+                Path { p in
+                    let step: CGFloat = 40
+                    var x: CGFloat = 0
+                    while x < geo.size.width { p.move(to: .init(x: x, y: 0)); p.addLine(to: .init(x: x, y: geo.size.height)); x += step }
+                    var y: CGFloat = 0
+                    while y < geo.size.height { p.move(to: .init(x: 0, y: y)); p.addLine(to: .init(x: geo.size.width, y: y)); y += step }
+                }
+                .stroke(Color.lexisAccent.opacity(0.10), lineWidth: 1)
+            }
+            .ignoresSafeArea()
+        }
+    }
+}

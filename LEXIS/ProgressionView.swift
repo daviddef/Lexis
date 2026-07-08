@@ -332,6 +332,10 @@ struct CollectionView: View {
                     collectionSection("CLEAR BURSTS") {
                         ForEach(BurstStyle.allCases) { burst in BurstCard(burst: burst) }
                     }
+
+                    collectionSection("BOARD BACKDROPS") {
+                        ForEach(BoardBackdrop.allCases) { backdrop in BackdropCard(backdrop: backdrop) }
+                    }
                 }
                 .padding(20)
             }
@@ -510,6 +514,78 @@ struct BurstCard: View {
                 .background(Capsule().fill(profile.canAfford(burst.coinPrice) ? Color.lexisGold : Color.lexisBlockBorder.opacity(0.4)))
             }
             .disabled(!profile.canAfford(burst.coinPrice))
+        }
+    }
+
+    private func pill(_ text: String, color: Color, filled: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .black, design: .rounded))
+            .foregroundColor(filled ? .lexisBg : color)
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(Capsule().fill(filled ? color : color.opacity(0.15)))
+    }
+}
+
+/// A collection card for a board-backdrop cosmetic: mini preview + equip/buy.
+struct BackdropCard: View {
+    let backdrop: BoardBackdrop
+    @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var profile = PlayerProfile.shared
+    @ObservedObject private var store = CosmeticsStore.shared
+
+    private var unlocked: Bool { backdrop.isDefault || store.isOwned(backdrop.cosmeticID) }
+    private var equipped: Bool { settings.equippedBackdrop == backdrop }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Mini preview: the backdrop clipped into a rounded tile.
+            ZStack {
+                Color.lexisBg
+                BoardBackdropView(style: backdrop)
+            }
+            .frame(width: 58, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.lexisBlockBorder.opacity(0.4), lineWidth: 1))
+            .padding(.top, 4)
+
+            Text(backdrop.displayName)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundColor(.lexisText)
+            action
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14).padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.lexisBlock.opacity(0.6))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(equipped ? Color.lexisAccent : Color.clear, lineWidth: 2))
+        )
+    }
+
+    @ViewBuilder private var action: some View {
+        if equipped {
+            pill("EQUIPPED", color: .lexisAccent, filled: true)
+        } else if unlocked {
+            Button {
+                settings.equippedBackdrop = backdrop
+                Haptics.light()
+            } label: { pill("EQUIP", color: .lexisAccent, filled: false) }
+        } else {
+            Button {
+                if store.buyCosmetic(id: backdrop.cosmeticID, price: backdrop.coinPrice) {
+                    settings.equippedBackdrop = backdrop
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "circle.hexagongrid.fill").font(.system(size: 11, weight: .bold))
+                    Text("\(backdrop.coinPrice)").font(.system(size: 13, weight: .black, design: .rounded))
+                }
+                .foregroundColor(profile.canAfford(backdrop.coinPrice) ? .lexisBg : .lexisMid)
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .background(Capsule().fill(profile.canAfford(backdrop.coinPrice) ? Color.lexisGold : Color.lexisBlockBorder.opacity(0.4)))
+            }
+            .disabled(!profile.canAfford(backdrop.coinPrice))
         }
     }
 

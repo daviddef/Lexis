@@ -202,6 +202,10 @@ class GameSettings: ObservableObject {
     @Published var equippedBurst: BurstStyle {
         didSet { UserDefaults.standard.set(equippedBurst.rawValue, forKey: "lexisEquippedBurst") }
     }
+    // The equipped board backdrop cosmetic (see BoardBackdrop).
+    @Published var equippedBackdrop: BoardBackdrop {
+        didSet { UserDefaults.standard.set(equippedBackdrop.rawValue, forKey: "lexisEquippedBackdrop") }
+    }
     @Published var hasSeenTutorial: Bool {
         didSet { UserDefaults.standard.set(hasSeenTutorial, forKey: "lexisHasSeenTutorial") }
     }
@@ -223,6 +227,7 @@ class GameSettings: ObservableObject {
         let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
         self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
         self.equippedBurst = BurstStyle(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBurst") ?? "") ?? .shards
+        self.equippedBackdrop = BoardBackdrop(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBackdrop") ?? "") ?? .none
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
 
         // Republish when the SYSTEM reduce-motion setting flips mid-session so

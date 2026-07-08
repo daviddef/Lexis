@@ -44,6 +44,11 @@ struct GameView: View {
                 // Background
                 Color.lexisBg.ignoresSafeArea()
 
+                // Equipped board backdrop cosmetic (behind everything).
+                BoardBackdropView(style: settings.equippedBackdrop)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+
                 // Ambient grid lines
                 Path { path in
                     for col in 0...GameConstants.cols {
