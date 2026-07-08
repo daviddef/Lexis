@@ -2,10 +2,16 @@ import SwiftUI
 
 @main
 struct LexisApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         // Run persistence migrations FIRST, synchronously, before any manager
         // reads its UserDefaults-backed state.
         DataMigration.runIfNeeded()
+        // Then reconcile progress with iCloud (also synchronous, pre-managers),
+        // so a reinstall/new device restores XP, coins, high scores, streaks
+        // and owned cosmetics before anything reads them.
+        CloudSync.shared.startAndReconcile()
 
         // Kick off Game Center auth early so leaderboards/achievements are
         // ready by the time the player finishes their first game. Same task
@@ -36,6 +42,10 @@ struct LexisApp: App {
         WindowGroup {
             GameView()
                 .preferredColorScheme(.dark)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Back progress up to iCloud when the app goes to the background.
+            if phase == .background { CloudSync.shared.pushToCloud() }
         }
     }
 }

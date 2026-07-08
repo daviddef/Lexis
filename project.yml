@@ -21,6 +21,10 @@ targets:
       path: LEXIS/LEXIS.entitlements
       properties:
         com.apple.developer.game-center: true
+        # iCloud key-value store, for CloudSync (progress backup/restore).
+        # Requires the iCloud capability enabled on the App ID; -allowProvisioning-
+        # Updates usually enables it automatically on the next device archive.
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
         com.apple.security.application-groups:
           - group.com.daviddefranceski.lexis
     settings:
