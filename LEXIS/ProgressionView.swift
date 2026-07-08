@@ -533,7 +533,7 @@ struct BackdropCard: View {
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var store = CosmeticsStore.shared
 
-    private var unlocked: Bool { backdrop.isDefault || store.isOwned(backdrop.cosmeticID) }
+    private var unlocked: Bool { backdrop.alwaysAvailable || store.isOwned(backdrop.cosmeticID) }
     private var equipped: Bool { settings.equippedBackdrop == backdrop }
 
     var body: some View {

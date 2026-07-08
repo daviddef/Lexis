@@ -37,6 +37,14 @@ struct GameView: View {
     @State private var showDifficultySelect = false
     @State private var dangerVignettePulse = false
 
+    // The backdrop to actually draw: "Match Theme" resolves to whichever scene
+    // fits the equipped tile theme, so the .isScene gameplay-only gate below
+    // sees the real (resolved) style rather than the .matchTheme wrapper.
+    private var resolvedBackdrop: BoardBackdrop {
+        let b = settings.equippedBackdrop
+        return b == .matchTheme ? settings.tileTheme.matchingScene : b
+    }
+
     var body: some View {
         GeometryReader { geo in
             let tileSize = tileSize(for: geo.size)
@@ -45,9 +53,22 @@ struct GameView: View {
                 Color.lexisBg.ignoresSafeArea()
 
                 // Equipped board backdrop cosmetic (behind everything).
-                BoardBackdropView(style: settings.equippedBackdrop)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                // Animated *scenes* belong to the board itself, so they only
+                // show during play/pause — on the menu they'd distract from the
+                // logo and compete with the menu's own ambience. The subtle
+                // static backdrops (dusk/mint/ember/grid) stay on everywhere.
+                if resolvedBackdrop.isScene {
+                    if model.phase == .playing || model.phase == .paused {
+                        BoardBackdropView(style: resolvedBackdrop)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .transition(.opacity)
+                    }
+                } else {
+                    BoardBackdropView(style: resolvedBackdrop)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
 
                 // Ambient grid lines
                 Path { path in

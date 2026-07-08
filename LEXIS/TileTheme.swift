@@ -134,4 +134,21 @@ enum TileTheme: String, CaseIterable, Identifiable, Codable {
     var isUnlocked: Bool {
         milestoneMet || CosmeticsStore.shared.isPurchased(self)
     }
+
+    /// The scene backdrop that shares this theme's world, used by the
+    /// "Match Theme" backdrop so equipping a theme dresses the whole board to
+    /// match. Must never return `.matchTheme` (that would recurse in
+    /// BoardBackdropView). Classic has no scene → `.none` (plain board).
+    var matchingScene: BoardBackdrop {
+        switch self {
+        case .classic: return .none
+        case .ocean:   return .oceanDeep
+        case .sunset:  return .sunsetBeach
+        case .forest:  return .forest
+        case .violet:  return .starfield
+        case .rose:    return .rosePetals
+        case .gold:    return .goldRays
+        case .mono:    return .monoRain
+        }
+    }
 }

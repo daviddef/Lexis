@@ -113,31 +113,47 @@ enum BurstStyle: String, CaseIterable, Codable, Identifiable {
 /// look; the rest are coin-buyable cosmetics.
 enum BoardBackdrop: String, CaseIterable, Codable, Identifiable {
     case none, dusk, mint, ember, grid
-    // Scene backdrops — evocative, gently animated, matched to a theme's world.
-    case oceanDeep, sunsetBeach
+    // "Match Theme": renders whichever scene fits the equipped tile theme —
+    // the elegant "your theme is a whole world" option. Always free.
+    case matchTheme
+    // Scene backdrops — evocative, gently animated, one per theme's world.
+    case oceanDeep, sunsetBeach, forest, starfield, rosePetals, goldRays, monoRain
 
     var id: String { rawValue }
     var cosmeticID: String { "backdrop.\(rawValue)" }
     var isDefault: Bool { self == .none }
+    /// Available without buying (the plain default + the theme-matcher).
+    var alwaysAvailable: Bool { self == .none || self == .matchTheme }
     /// Scenes are the fancier, animated tier.
-    var isScene: Bool { self == .oceanDeep || self == .sunsetBeach }
+    var isScene: Bool {
+        switch self {
+        case .oceanDeep, .sunsetBeach, .forest, .starfield, .rosePetals, .goldRays, .monoRain: return true
+        default: return false
+        }
+    }
     var displayName: String {
         switch self {
         case .none: return "None"
+        case .matchTheme: return "Match Theme"
         case .dusk: return "Dusk"
         case .mint: return "Mint Glow"
         case .ember: return "Ember"
         case .grid: return "Neon Grid"
         case .oceanDeep: return "Ocean Deep"
         case .sunsetBeach: return "Sunset Beach"
+        case .forest: return "Forest"
+        case .starfield: return "Starfield"
+        case .rosePetals: return "Rose Petals"
+        case .goldRays: return "Gold Rays"
+        case .monoRain: return "Mono Rain"
         }
     }
     var coinPrice: Int {
         switch self {
-        case .none: return 0
+        case .none, .matchTheme: return 0
         case .dusk, .mint: return 150
         case .ember, .grid: return 200
-        case .oceanDeep, .sunsetBeach: return 350   // scenes cost a bit more
+        default: return 350   // scenes cost a bit more
         }
     }
 }
@@ -175,6 +191,21 @@ struct BoardBackdropView: View {
             OceanBackdrop()
         case .sunsetBeach:
             SunsetBackdrop()
+        case .forest:
+            ForestBackdrop()
+        case .starfield:
+            StarfieldBackdrop()
+        case .rosePetals:
+            RosePetalsBackdrop()
+        case .goldRays:
+            GoldRaysBackdrop()
+        case .monoRain:
+            MonoRainBackdrop()
+        case .matchTheme:
+            // Resolve to whichever scene fits the equipped tile theme. The
+            // theme's `matchingScene` never returns `.matchTheme`, so no
+            // recursion. If a theme has no scene it returns `.none` (Color.clear).
+            BoardBackdropView(style: GameSettings.shared.tileTheme.matchingScene)
         }
     }
 }
@@ -347,6 +378,335 @@ struct SunsetBackdrop: View {
             .onAppear {
                 guard !settings.motionReduced else { return }
                 withAnimation(.easeInOut(duration: 3.5).repeatForever(autoreverses: true)) { glow = true }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - Reusable drift particle
+// A single element that travels a linear path across the board and wraps.
+// `axis: .vertical` falls top→bottom (or rises, if `rising`); `.horizontal`
+// crosses left→right. The wrap seam is pushed off-screen by the ±margin so
+// it's never visible, and `frac` is modulo-wrapped for a seamless loop.
+private enum DriftAxis { case vertical, horizontal }
+
+private struct Drifter<Content: View>: View {
+    let axis: DriftAxis
+    let rising: Bool
+    let cross: CGFloat          // fixed position on the perpendicular axis (points)
+    let extent: CGFloat         // length of the travel axis (points)
+    let sway: CGFloat           // lateral wobble amplitude (points)
+    let dur: Double
+    let phase: Double
+    let animate: Bool
+    let content: () -> Content
+    @State private var t: CGFloat
+
+    init(axis: DriftAxis, rising: Bool = false, cross: CGFloat, extent: CGFloat,
+         sway: CGFloat = 0, dur: Double, phase: Double, animate: Bool,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.axis = axis; self.rising = rising; self.cross = cross; self.extent = extent
+        self.sway = sway; self.dur = dur; self.phase = phase; self.animate = animate
+        self.content = content
+        _t = State(initialValue: CGFloat(phase))
+    }
+
+    var body: some View {
+        let frac = t - t.rounded(.down)
+        let travel = extent + 120
+        // progress along the travel axis, 0…1, offset so the seam is off-screen
+        let p = -60 + travel * (rising ? (1 - frac) : frac)
+        // gentle sinusoidal sway on the perpendicular axis
+        let swayOffset = sway == 0 ? 0 : sin((Double(frac) + phase) * .pi * 2) * Double(sway)
+        content()
+            .position(
+                x: axis == .vertical ? cross + CGFloat(swayOffset) : p,
+                y: axis == .vertical ? p : cross + CGFloat(swayOffset)
+            )
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.linear(duration: dur).repeatForever(autoreverses: false)) {
+                    t = CGFloat(phase) + 1
+                }
+            }
+    }
+}
+
+// A soft-edged particle body used by several scenes.
+private struct Mote: View {
+    var color: Color
+    var size: CGFloat
+    var body: some View {
+        Circle().fill(color).frame(width: size, height: size).blur(radius: size * 0.25)
+    }
+}
+
+// MARK: - Forest scene
+// A deep-green canopy gradient with leaves drifting down and a few fireflies
+// pulsing. Calm and dim so tiles stay legible.
+struct ForestBackdrop: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    // xFrac, size, dur, phase, sway, hue(0 green…1 amber), opacity
+    private let leaves: [(x: CGFloat, size: CGFloat, dur: Double, phase: Double, sway: CGFloat, hue: CGFloat, opacity: Double)] = [
+        (0.12, 12, 20, 0.00, 14, 0.1, 0.16),
+        (0.30, 9, 26, 0.55, 20, 0.5, 0.13),
+        (0.48, 14, 17, 0.30, 10, 0.0, 0.18),
+        (0.66, 8, 30, 0.80, 24, 0.7, 0.12),
+        (0.82, 11, 23, 0.15, 16, 0.3, 0.15),
+        (0.92, 7, 28, 0.62, 12, 0.9, 0.11),
+    ]
+    // xFrac, yFrac, dur, phase
+    private let flies: [(x: CGFloat, y: CGFloat, dur: Double, phase: Double)] = [
+        (0.22, 0.40, 3.0, 0.0), (0.58, 0.28, 3.8, 0.4),
+        (0.74, 0.55, 3.3, 0.7), (0.40, 0.66, 4.1, 0.2),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [
+                    Color(red: 0.04, green: 0.14, blue: 0.08),
+                    Color(red: 0.02, green: 0.07, blue: 0.05)
+                ], startPoint: .top, endPoint: .bottom)
+
+                ForEach(0..<leaves.count, id: \.self) { i in
+                    let l = leaves[i]
+                    Drifter(axis: .vertical, cross: w * l.x, extent: h, sway: l.sway,
+                            dur: l.dur, phase: l.phase, animate: !settings.motionReduced) {
+                        LeafShape()
+                            .fill(Color(red: 0.4 + Double(l.hue) * 0.5,
+                                        green: 0.6 - Double(l.hue) * 0.2,
+                                        blue: 0.25).opacity(l.opacity))
+                            .frame(width: l.size, height: l.size)
+                            .rotationEffect(.degrees(Double(l.phase) * 360))
+                    }
+                }
+
+                ForEach(0..<flies.count, id: \.self) { i in
+                    let f = flies[i]
+                    FireflyView(x: w * f.x, y: h * f.y, dur: f.dur, phase: f.phase,
+                                animate: !settings.motionReduced)
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct LeafShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.midX, y: r.minY))
+        p.addQuadCurve(to: CGPoint(x: r.midX, y: r.maxY), control: CGPoint(x: r.maxX, y: r.midY))
+        p.addQuadCurve(to: CGPoint(x: r.midX, y: r.minY), control: CGPoint(x: r.minX, y: r.midY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+private struct FireflyView: View {
+    let x: CGFloat; let y: CGFloat; let dur: Double; let phase: Double; let animate: Bool
+    @State private var on = false
+    var body: some View {
+        Mote(color: Color(red: 0.85, green: 0.95, blue: 0.5).opacity(on ? 0.5 : 0.08), size: 6)
+            .position(x: x, y: y)
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.easeInOut(duration: dur).repeatForever(autoreverses: true).delay(phase * dur)) {
+                    on = true
+                }
+            }
+    }
+}
+
+// MARK: - Starfield scene
+// A dark violet nebula glow with static, softly twinkling stars. No motion
+// across the screen (just opacity breathing), so it's the calmest scene.
+struct StarfieldBackdrop: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    // xFrac, yFrac, size, dur, phase, baseOpacity
+    private let stars: [(x: CGFloat, y: CGFloat, size: CGFloat, dur: Double, phase: Double, op: Double)] = [
+        (0.10, 0.12, 2.5, 3.2, 0.0, 0.5), (0.24, 0.30, 1.8, 4.0, 0.3, 0.35),
+        (0.38, 0.08, 3.0, 3.6, 0.6, 0.6), (0.52, 0.22, 2.0, 4.4, 0.1, 0.4),
+        (0.66, 0.14, 1.6, 3.0, 0.8, 0.3), (0.80, 0.34, 2.8, 3.8, 0.5, 0.55),
+        (0.90, 0.18, 2.0, 4.2, 0.2, 0.4), (0.16, 0.48, 1.7, 3.4, 0.7, 0.32),
+        (0.44, 0.44, 2.4, 4.1, 0.4, 0.45), (0.72, 0.52, 1.9, 3.7, 0.9, 0.36),
+        (0.30, 0.62, 2.2, 3.9, 0.15, 0.42), (0.86, 0.66, 1.6, 4.3, 0.55, 0.3),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [
+                    Color(red: 0.06, green: 0.04, blue: 0.16),
+                    Color(red: 0.02, green: 0.02, blue: 0.06)
+                ], startPoint: .top, endPoint: .bottom)
+
+                // Nebula glow.
+                RadialGradient(colors: [Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.28), .clear],
+                               center: .init(x: 0.7, y: 0.3), startRadius: 10, endRadius: 320)
+                RadialGradient(colors: [Color(red: 0.2, green: 0.3, blue: 0.6).opacity(0.20), .clear],
+                               center: .init(x: 0.25, y: 0.6), startRadius: 10, endRadius: 260)
+
+                ForEach(0..<stars.count, id: \.self) { i in
+                    let s = stars[i]
+                    StarView(x: w * s.x, y: h * s.y, size: s.size, dur: s.dur,
+                             phase: s.phase, baseOpacity: s.op, animate: !settings.motionReduced)
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct StarView: View {
+    let x: CGFloat; let y: CGFloat; let size: CGFloat
+    let dur: Double; let phase: Double; let baseOpacity: Double; let animate: Bool
+    @State private var bright = false
+    var body: some View {
+        Circle().fill(Color.white.opacity(bright ? baseOpacity : baseOpacity * 0.3))
+            .frame(width: size, height: size)
+            .position(x: x, y: y)
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.easeInOut(duration: dur).repeatForever(autoreverses: true).delay(phase * dur)) {
+                    bright = true
+                }
+            }
+    }
+}
+
+// MARK: - Rose Petals scene
+// A warm rosé gradient with soft petals drifting down and swaying. Romantic,
+// low-contrast pinks that read behind the rose tile theme.
+struct RosePetalsBackdrop: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    private let petals: [(x: CGFloat, size: CGFloat, dur: Double, phase: Double, sway: CGFloat, opacity: Double)] = [
+        (0.10, 13, 22, 0.00, 22, 0.16), (0.28, 10, 27, 0.50, 28, 0.13),
+        (0.46, 15, 18, 0.25, 16, 0.18), (0.64, 9, 31, 0.75, 30, 0.12),
+        (0.80, 12, 24, 0.10, 20, 0.15), (0.90, 8, 29, 0.60, 24, 0.11),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [
+                    Color(red: 0.26, green: 0.10, blue: 0.16),
+                    Color(red: 0.12, green: 0.05, blue: 0.09)
+                ], startPoint: .top, endPoint: .bottom)
+
+                ForEach(0..<petals.count, id: \.self) { i in
+                    let pt = petals[i]
+                    Drifter(axis: .vertical, cross: w * pt.x, extent: h, sway: pt.sway,
+                            dur: pt.dur, phase: pt.phase, animate: !settings.motionReduced) {
+                        PetalShape()
+                            .fill(Color(red: 0.95, green: 0.55, blue: 0.65).opacity(pt.opacity))
+                            .frame(width: pt.size, height: pt.size * 1.3)
+                            .rotationEffect(.degrees(Double(pt.phase) * 300 + 20))
+                    }
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct PetalShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.midX, y: r.minY))
+        p.addQuadCurve(to: CGPoint(x: r.midX, y: r.maxY), control: CGPoint(x: r.maxX * 1.05, y: r.midY))
+        p.addQuadCurve(to: CGPoint(x: r.midX, y: r.minY), control: CGPoint(x: r.minX - r.width * 0.05, y: r.midY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - Gold Rays scene
+// A warm amber gradient with slow godrays and gold sparkles rising, evoking
+// treasure/light. Pairs with the gold tile theme.
+struct GoldRaysBackdrop: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    private let sparks: [(x: CGFloat, size: CGFloat, dur: Double, phase: Double, sway: CGFloat, opacity: Double)] = [
+        (0.15, 5, 14, 0.00, 12, 0.5), (0.30, 3, 18, 0.45, 16, 0.35),
+        (0.45, 6, 12, 0.70, 10, 0.55), (0.60, 4, 20, 0.20, 18, 0.4),
+        (0.75, 3, 16, 0.55, 14, 0.32), (0.88, 5, 15, 0.30, 12, 0.45),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [
+                    Color(red: 0.20, green: 0.14, blue: 0.03),
+                    Color(red: 0.09, green: 0.06, blue: 0.02)
+                ], startPoint: .top, endPoint: .bottom)
+
+                // A few soft godrays fanning from the top.
+                ForEach(0..<4, id: \.self) { i in
+                    let cx = [0.2, 0.4, 0.6, 0.8][i]
+                    Rectangle()
+                        .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.85, blue: 0.5).opacity(0.10), .clear],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(width: 40, height: h * 0.9)
+                        .rotationEffect(.degrees([-8, -3, 3, 8][i]), anchor: .top)
+                        .position(x: w * cx, y: h * 0.45)
+                        .blur(radius: 12)
+                }
+
+                ForEach(0..<sparks.count, id: \.self) { i in
+                    let s = sparks[i]
+                    Drifter(axis: .vertical, rising: true, cross: w * s.x, extent: h, sway: s.sway,
+                            dur: s.dur, phase: s.phase, animate: !settings.motionReduced) {
+                        Mote(color: Color(red: 1.0, green: 0.85, blue: 0.45).opacity(s.opacity), size: s.size)
+                    }
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - Mono Rain scene
+// A cool charcoal gradient with thin falling code-rain streaks. Minimal and
+// monochrome to pair with the mono tile theme.
+struct MonoRainBackdrop: View {
+    @ObservedObject private var settings = GameSettings.shared
+
+    private let streaks: [(x: CGFloat, len: CGFloat, dur: Double, phase: Double, opacity: Double)] = [
+        (0.08, 60, 6.0, 0.00, 0.14), (0.18, 40, 8.0, 0.45, 0.10),
+        (0.30, 80, 5.0, 0.20, 0.16), (0.42, 50, 7.0, 0.70, 0.12),
+        (0.54, 70, 5.5, 0.10, 0.15), (0.66, 45, 8.5, 0.55, 0.10),
+        (0.78, 65, 6.5, 0.30, 0.13), (0.90, 55, 7.5, 0.80, 0.11),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                LinearGradient(colors: [
+                    Color(red: 0.08, green: 0.09, blue: 0.10),
+                    Color(red: 0.03, green: 0.03, blue: 0.04)
+                ], startPoint: .top, endPoint: .bottom)
+
+                ForEach(0..<streaks.count, id: \.self) { i in
+                    let s = streaks[i]
+                    Drifter(axis: .vertical, cross: w * s.x, extent: h, sway: 0,
+                            dur: s.dur, phase: s.phase, animate: !settings.motionReduced) {
+                        Capsule()
+                            .fill(LinearGradient(colors: [.clear, Color(red: 0.6, green: 0.9, blue: 0.75).opacity(s.opacity)],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .frame(width: 2, height: s.len)
+                    }
+                }
             }
         }
         .ignoresSafeArea()
