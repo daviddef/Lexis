@@ -24,9 +24,11 @@ struct LexisApp: App {
             GoalsManager.shared.loadOrGenerate()
             // Roll the weekly event forward if the week/weekend flavour changed.
             WeeklyEventManager.shared.refresh()
-            // StoreKit: begin the transaction listener + load products (no-op
-            // until App Store Connect products exist).
-            StoreManager.shared.start()
+            // Rewarded ads: attach the network provider. nil → DEBUG stub so
+            // the watch→reward flow is testable now; a real build with no
+            // provider simply shows no ads. Wire an AdMob/AppLovin provider
+            // here once the SDK + ad units exist.
+            AdManager.shared.configure(nil)
         }
     }
     
