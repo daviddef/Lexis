@@ -2900,6 +2900,11 @@ struct ScoreCard: View {
             Text(value)
                 .font(.system(size: 28, weight: .black, design: .monospaced))
                 .foregroundColor(color)
+                // A big number like "304,536" is too wide for a third-of-screen
+                // card; shrink it to stay on ONE line so all three cards keep
+                // the same height and the digits never spill out of the card.
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
             Text(label)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundColor(.lexisMid)
