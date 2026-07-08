@@ -233,6 +233,7 @@ struct GameView: View {
 // MARK: - Playing View
 struct PlayingView: View {
     @ObservedObject var model: GameModel
+    @ObservedObject private var ads = AdManager.shared
     let tileSize: CGFloat
     @Binding var showWildcardPicker: Bool
     @Binding var selectedTiles: [(row: Int, col: Int)]
@@ -1104,6 +1105,36 @@ struct PlayingView: View {
                     }
                     .padding(.horizontal, 16)
                     .transition(.opacity)
+                } else if ads.isReady && !model.isDailyMode && !model.isDuelMode && !model.isWeeklyMode {
+                    // On-demand power-up: with no charge banked, offer a
+                    // rewarded ad for one. Pauses the timer while the ad plays
+                    // (a full-screen ad would otherwise let the piece keep
+                    // falling), then resumes. Endless only.
+                    Button {
+                        let wasPlaying = model.phase == .playing
+                        if wasPlaying { model.pauseGame() }
+                        ads.showRewarded(placement: "charge", onReward: {
+                            model.grantUtilityCharge()
+                        }, onFinished: {
+                            if wasPlaying && model.phase == .paused { model.resumeGame() }
+                        })
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "play.rectangle.fill").font(.system(size: 12, weight: .bold))
+                            Text("WATCH → EARN A POWER-UP CHARGE")
+                                .font(.system(size: 11, weight: .black, design: .rounded)).tracking(0.5)
+                        }
+                        .foregroundColor(.lexisAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.lexisAccent.opacity(0.08))
+                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.lexisAccent.opacity(0.3), lineWidth: 1))
+                        )
+                    }
+                    .padding(.horizontal, 16)
+                    .transition(.opacity)
                 }
 
                 // Wildcard picker now floats over the board (see below)
@@ -1861,6 +1892,7 @@ struct MenuView: View {
     @ObservedObject private var dailyManager = DailyChallengeManager.shared
     @ObservedObject private var goalsManager = GoalsManager.shared
     @ObservedObject private var weekly = WeeklyEventManager.shared
+    @ObservedObject private var ads = AdManager.shared
     @State private var logoScale: CGFloat = 0.8
     @State private var logoGlow = false
     @State private var showDailyResults = false
@@ -2216,7 +2248,26 @@ struct MenuView: View {
             // All difficulty levels visible at a glance — tap any card to
             // select it directly. Shared with the Game Over screen.
             DifficultyCardsRow()
-                .padding(.bottom, 20)
+                .padding(.bottom, ads.isReady ? 8 : 20)
+
+            // Rewarded boost: optionally start with a bomb + tip + charge.
+            // Above PLAY ENDLESS so it's always on-screen; shown only when an
+            // ad is ready. Endless only, so it never touches Daily/Duel fairness.
+            if ads.isReady {
+                Button {
+                    ads.showRewarded(placement: "boost") {
+                        withAnimation(.spring()) { model.startGame(boost: true) }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.rectangle.fill").font(.system(size: 12, weight: .bold))
+                        Text("WATCH → START WITH A BOOST")
+                            .font(.system(size: 12, weight: .black, design: .rounded)).tracking(0.5)
+                    }
+                    .foregroundColor(.lexisAccent)
+                }
+                .padding(.bottom, 10)
+            }
 
             // Start button — unlimited endless mode
             Button {
@@ -2504,6 +2555,7 @@ struct GameOverView: View {
     @ObservedObject var model: GameModel
     @Binding var showDifficultySelect: Bool
     @ObservedObject private var settings = GameSettings.shared
+    @ObservedObject private var ads = AdManager.shared
     @State private var scale: CGFloat = 0.7
     @State private var opacity: Double = 0
     @State private var showLeaderboard = false
@@ -2642,6 +2694,25 @@ struct GameOverView: View {
 
                 // Buttons
                 VStack(spacing: 12) {
+                    // Rewarded revive: watch an ad to clear the top rows and
+                    // keep this run going. Shown only when an ad is ready and
+                    // the run hasn't already been revived (which would have
+                    // marked it leaderboard-ineligible). The continued run's
+                    // score no longer counts toward the leaderboards.
+                    if ads.isReady && !model.runIneligibleForLeaderboard {
+                        Button {
+                            ads.showRewarded(placement: "revive") {
+                                withAnimation(.spring()) { model.reviveRun() }
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.rectangle.fill").font(.system(size: 15, weight: .bold))
+                                Text("WATCH → KEEP GOING")
+                            }
+                        }
+                        .buttonStyle(LexisPrimaryButtonStyle(tint: .lexisGold))
+                    }
+
                     // PLAY AGAIN gets the same prominent treatment as the
                     // menu's PLAY ENDLESS — big, glowing, unmistakably the
                     // primary action — and launches straight into whatever

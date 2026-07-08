@@ -62,10 +62,12 @@ final class AdManager: ObservableObject {
     private func refreshReady() { isReady = provider?.isReady ?? false }
 
     /// Show a rewarded ad for `placement`. `onReward` runs only if the user
-    /// actually earned it. No-ops (and logs) if no ad is available.
-    func showRewarded(placement: String, onReward: @escaping () -> Void) {
+    /// actually earned it; `onFinished` always runs afterward (or immediately
+    /// if no ad is available) — use it to un-pause a game shown behind the ad.
+    func showRewarded(placement: String, onReward: @escaping () -> Void, onFinished: (() -> Void)? = nil) {
         guard !presenting, let provider, provider.isReady else {
             Analytics.shared.track(.init("ad_unavailable", ["placement": placement]))
+            onFinished?()
             return
         }
         presenting = true
@@ -80,6 +82,7 @@ final class AdManager: ObservableObject {
                 Analytics.shared.track(.init("ad_rewarded", ["placement": placement]))
                 onReward()
             }
+            onFinished?()
             provider.load()          // preload the next one
             self.refreshReady()
         })

@@ -552,10 +552,11 @@ class GameModel: ObservableObject {
         refillBag()
     }
     
-    func startGame() {
+    func startGame(boost: Bool = false) {
         grid = Array(repeating: Array(repeating: nil, count: GameConstants.cols), count: GameConstants.rows)
         score = 0
         level = 1
+        runIneligibleForLeaderboard = false
         comboCount = 0
         lastComboBlockCount = 0
         blocksDropped = 0
@@ -588,6 +589,12 @@ class GameModel: ObservableObject {
         spawnNewLetter()
         phase = .playing
         startDropTimer()
+        // Rewarded "boost": start with a bomb, a tip, and a utility charge.
+        if boost {
+            bombsAvailable = 1
+            tipsAvailable = 1
+            utilityCharges = 1
+        }
         gameStartDate = Date()
         Analytics.shared.gameStart(mode: "endless", difficulty: settings.difficulty.rawValue)
         GoalsManager.shared.onRunStarted()
@@ -1641,7 +1648,7 @@ class GameModel: ObservableObject {
         GoalsManager.shared.onComboReached(comboCount)
 
         score += totalScore
-        if !isSequenceMode, score > highScore {
+        if !isSequenceMode, !runIneligibleForLeaderboard, score > highScore {
             highScore = score
             settings.setHighScore(highScore, for: settings.difficulty)
         }
@@ -1705,7 +1712,7 @@ class GameModel: ObservableObject {
         if grid.allSatisfy({ row in row.allSatisfy { $0 == nil } }) {
             let bonus = 500 * level
             score += bonus
-            if !isSequenceMode, score > highScore {
+            if !isSequenceMode, !runIneligibleForLeaderboard, score > highScore {
                 highScore = score
                 settings.setHighScore(highScore, for: settings.difficulty)
             }
@@ -1766,19 +1773,56 @@ class GameModel: ObservableObject {
         }
     }
     
+    // Set when a run is continued via a rewarded "revive" ad. A revived run's
+    // score no longer counts toward the high score / all-time leaderboard —
+    // the pre-revive score was already recorded legitimately, and anything
+    // after the ad continue is kept honest by being excluded. Reset each run.
+    @Published private(set) var runIneligibleForLeaderboard = false
+
     private func triggerGameOver() {
         phase = .gameOver
         dropTimer?.invalidate()
         Haptics.error()
         SoundManager.gameOver()
-        settings.recordScore(score, difficulty: settings.difficulty, wordsFound: foundWords.count)
-        AchievementTracker.onGameOver(score: score, difficulty: settings.difficulty, blocksDropped: blocksDropped)
+        // Revived runs are excluded from the score leaderboards (see flag).
+        if !runIneligibleForLeaderboard {
+            settings.recordScore(score, difficulty: settings.difficulty, wordsFound: foundWords.count)
+            AchievementTracker.onGameOver(score: score, difficulty: settings.difficulty, blocksDropped: blocksDropped)
+        }
         Analytics.shared.gameOver(mode: "endless", difficulty: settings.difficulty.rawValue,
                                   score: score, level: level, words: foundWords.count,
                                   durationSec: Int(Date().timeIntervalSince(gameStartDate)))
         GoalsManager.shared.onRunEnded(score: score)
         PlayerProfile.shared.addXP(score / 20)
         CosmeticsStore.shared.checkMilestoneUnlocks()
+    }
+
+    /// Continue a dead Endless run after a rewarded ad: clear the top rows to
+    /// make spawn room, mark the run leaderboard-ineligible, and resume.
+    func reviveRun() {
+        guard phase == .gameOver, !isSequenceMode else { return }
+        runIneligibleForLeaderboard = true
+        // Clear the top four rows so there's guaranteed room to spawn.
+        for row in 0..<4 {
+            for col in 0..<GameConstants.cols {
+                grid[row][col]?.glowingWordID = nil
+                grid[row][col] = nil
+            }
+        }
+        pendingWords = []
+        lastDangerTier = 0
+        phase = .playing
+        spawnNewLetter()   // recomputes danger + preview at its tail
+        startDropTimer()
+        Haptics.success()
+        Analytics.shared.track(.init("revive_used", ["score": "\(score)"]))
+    }
+
+    /// Grant one flexible utility charge (from a rewarded ad). Endless only.
+    func grantUtilityCharge() {
+        guard !isSequenceMode else { return }
+        utilityCharges = min(3, utilityCharges + 1)
+        Haptics.success()
     }
 
     // A Wordle-style recap for an Endless run — DailyChallengeManager
