@@ -2593,7 +2593,7 @@ struct GameOverView: View {
                 // begins at the measured "GAME OVER" title and each tile
                 // falls the full screen height beneath its own letter, so
                 // the headline appears to shed its letters.
-                if titleFrame != .zero {
+                if titleFrame != .zero && !settings.motionReduced {
                     ZStack {
                         ForEach(0..<demoTiles.count, id: \.self) { i in
                             let frac = (CGFloat(i) + 0.5) / CGFloat(demoTiles.count)
@@ -2612,6 +2612,10 @@ struct GameOverView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .id(titleFrame.maxY)
                     .allowsHitTesting(false)
+                    // Keep it a soft ambient wash so the red tiles never
+                    // compete with the buttons or read as stray floaters in
+                    // the space below them — matches the menu's calmer feel.
+                    .opacity(0.45)
                 }
 
                 ScrollView(.vertical, showsIndicators: false) {
@@ -2663,8 +2667,8 @@ struct GameOverView: View {
                 // redundant: BEST already shows it, and the difficulty
                 // cards below show each pace's best.)
                 HStack(spacing: 16) {
-                    ScoreCard(label: "SCORE", value: "\(model.score)", color: .lexisAccent)
-                    ScoreCard(label: "BEST", value: "\(model.highScore)", color: .lexisGold)
+                    ScoreCard(label: "SCORE", value: model.score.formatted(), color: .lexisAccent)
+                    ScoreCard(label: "BEST", value: model.highScore.formatted(), color: .lexisGold)
                     ScoreCard(label: "LEVEL", value: "\(model.level)", color: .lexisMid)
                 }
                 
@@ -2757,8 +2761,17 @@ struct GameOverView: View {
                     }
                     .buttonStyle(LexisGhostButtonStyle())
                 }
-                .padding(24)
+                // Primary actions sit at a 32pt inset, exactly like the
+                // menu's PLAY ENDLESS (24 from the content + 8 here).
+                .padding(.horizontal, 8)
+                .padding(.top, 6)
                 }
+                // One consistent 24pt content inset for the whole screen —
+                // title, score cards, and buttons all align to it, matching
+                // the menu. (The difficulty row negates this so its own
+                // internal 24 lands it at 24 too, identical to the menu.)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
             }
             .scaleEffect(scale)
             .opacity(opacity)
@@ -2894,9 +2907,9 @@ struct ScoreCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
                 .fill(Color.lexisBlock)
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(color.opacity(0.3), lineWidth: 1.5))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous).strokeBorder(color.opacity(0.3), lineWidth: 1.5))
         )
     }
 }
