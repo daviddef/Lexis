@@ -10,6 +10,12 @@
 # no argument this auto-increments CURRENT_PROJECT_VERSION in project.yml.
 # Pass a version string to start a new marketing version (build resets to 1).
 #
+# Self-healing: if the chosen build number is already on App Store Connect
+# (e.g. a manual Xcode upload leapfrogged the CLI), the upload is retried
+# automatically at one higher than whatever ASC reports, re-archiving as needed.
+# Transient ASC/network errors are also retried. So the build number in
+# project.yml after a run reflects what actually landed — commit it.
+#
 # Requirements (all already set up on this machine):
 #   • xcodegen on PATH
 #   • App Store Connect API key at the path below (the .p8 stays local; only
@@ -51,26 +57,19 @@ fi
 sedi -E "s/(CURRENT_PROJECT_VERSION: )\"[^\"]*\"/\1\"$NEW_BUILD\"/" project.yml
 
 MKT="$(grep -m1 'MARKETING_VERSION:' project.yml | sed -E 's/.*"([^"]*)".*/\1/')"
-echo "▸ Uploading LEXIS ${MKT} (build ${NEW_BUILD})"
-
-# ---- regenerate + archive -------------------------------------------------
-xcodegen generate
 
 ARCHIVE="build/LEXIS.xcarchive"
-rm -rf build && mkdir -p build
+LOG="build/export.log"
 
-echo "▸ Archiving…"
-xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
-  -destination 'generic/platform=iOS' \
-  -archivePath "$ARCHIVE" \
-  archive \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$API_KEY_PATH" \
-  -authenticationKeyID "$API_KEY_ID" \
-  -authenticationKeyIssuerID "$API_ISSUER_ID"
+# Set both targets' build number in project.yml (they must match).
+set_build() { sedi -E "s/(CURRENT_PROJECT_VERSION: )\"[^\"]*\"/\1\"$1\"/" project.yml; }
 
-# ---- export + upload ------------------------------------------------------
-cat > build/ExportOptions.plist <<PLIST
+# Regenerate (so the current build number is baked in) and archive.
+archive() {
+  echo "▸ Uploading LEXIS ${MKT} (build ${NEW_BUILD})"
+  xcodegen generate
+  rm -rf build && mkdir -p build
+  cat > build/ExportOptions.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -84,16 +83,62 @@ cat > build/ExportOptions.plist <<PLIST
 </dict>
 </plist>
 PLIST
+  echo "▸ Archiving…"
+  xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+    -destination 'generic/platform=iOS' \
+    -archivePath "$ARCHIVE" \
+    archive \
+    -allowProvisioningUpdates \
+    -authenticationKeyPath "$API_KEY_PATH" \
+    -authenticationKeyID "$API_KEY_ID" \
+    -authenticationKeyIssuerID "$API_ISSUER_ID"
+}
 
-echo "▸ Exporting + uploading to App Store Connect…"
-xcodebuild -exportArchive \
-  -archivePath "$ARCHIVE" \
-  -exportOptionsPlist build/ExportOptions.plist \
-  -exportPath build/export \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$API_KEY_PATH" \
-  -authenticationKeyID "$API_KEY_ID" \
-  -authenticationKeyIssuerID "$API_ISSUER_ID"
+# Export + upload the existing archive. Tees to $LOG; returns xcodebuild's status.
+export_upload() {
+  echo "▸ Exporting + uploading to App Store Connect…"
+  xcodebuild -exportArchive \
+    -archivePath "$ARCHIVE" \
+    -exportOptionsPlist build/ExportOptions.plist \
+    -exportPath build/export \
+    -allowProvisioningUpdates \
+    -authenticationKeyPath "$API_KEY_PATH" \
+    -authenticationKeyID "$API_KEY_ID" \
+    -authenticationKeyIssuerID "$API_ISSUER_ID" 2>&1 | tee "$LOG"
+  return "${PIPESTATUS[0]}"
+}
+
+set_build "$NEW_BUILD"
+archive
+
+# Upload with self-healing retries. Two failure modes are handled automatically:
+#   • build number already used (manual Xcode uploads leapfrog the CLI) — parse
+#     the "must be higher than 'N'" message, bump to N+1, re-archive, retry.
+#   • transient ASC/network errors ("Error Downloading App Information", timeouts)
+#     — wait and retry the upload without re-archiving.
+tries=0
+MAX_TRIES=8
+while :; do
+  if export_upload; then break; fi
+  tries=$(( tries + 1 ))
+  if [[ $tries -ge $MAX_TRIES ]]; then
+    echo "❌ Upload still failing after ${MAX_TRIES} attempts — see output above."
+    exit 1
+  fi
+  if grep -q "must be higher than the previously uploaded version" "$LOG"; then
+    LATEST="$(grep "must be higher than the previously uploaded version" "$LOG" | grep -oE '[0-9]+' | tail -1)"
+    NEW_BUILD=$(( LATEST + 1 ))
+    echo "▸ Build number already on App Store Connect; bumping to ${NEW_BUILD} and re-archiving…"
+    set_build "$NEW_BUILD"
+    archive
+  elif grep -qiE "Error Downloading App Information|timed out|could not connect|network connection was lost|Unable to |please try again" "$LOG"; then
+    echo "▸ Transient App Store Connect error; retrying upload in 15s (attempt $((tries+1))/${MAX_TRIES})…"
+    sleep 15
+  else
+    echo "❌ Upload failed with an unrecognized error — see output above."
+    exit 1
+  fi
+done
 
 echo ""
 echo "✅ Uploaded LEXIS ${MKT} (build ${NEW_BUILD})."
