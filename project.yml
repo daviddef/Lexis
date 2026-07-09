@@ -60,7 +60,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: LEXIS
         MARKETING_VERSION: "2.0"
-        CURRENT_PROJECT_VERSION: "13"
+        CURRENT_PROJECT_VERSION: "14"
         # The board is a tall portrait layout with no landscape support built
         # in, so rather than declaring all 4 orientations (which App Store
         # Connect otherwise requires for iPad multitasking), we opt out of
@@ -107,5 +107,5 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: LexisWidget/Info.plist
         MARKETING_VERSION: "2.0"
-        CURRENT_PROJECT_VERSION: "13"
+        CURRENT_PROJECT_VERSION: "14"
         SKIP_INSTALL: YES
