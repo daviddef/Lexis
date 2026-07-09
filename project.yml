@@ -7,6 +7,26 @@ options:
 configs:
   Debug: debug
   Release: release
+# Define the app scheme explicitly (and shared) so `xcodegen generate` always
+# emits LEXIS as the primary run target. Without this, regenerating wipes
+# schemes and Xcode auto-creates one per target — sometimes leaving the
+# non-launchable LexisWidgetExtension selected, which fails with "failed to
+# launch or exited before the debugger could attach".
+schemes:
+  LEXIS:
+    build:
+      targets:
+        LEXIS: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
 targets:
   LEXIS:
     type: application
