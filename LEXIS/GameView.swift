@@ -664,8 +664,11 @@ struct PlayingView: View {
                         if delta >= step { boardDragAccum += step; model.moveRight() }
                         else if delta <= -step { boardDragAccum -= step; model.moveLeft() }
                     } else if dy > 16 {
+                        // Soft-drop speed tracks the SLIDE speed (points/sec),
+                        // so a gentle slide nudges it down and a fast slide
+                        // hurries it — without ever slamming (that's the button).
                         if !model.isSoftDropping { model.beginSoftDrop() }
-                        model.updateSoftDropSpeed(velocity: Double(dy) * 8)
+                        model.updateSoftDropSpeed(velocity: value.velocity.height)
                     }
                 }
                 .onEnded { _ in

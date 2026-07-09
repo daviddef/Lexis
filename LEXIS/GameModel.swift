@@ -1090,11 +1090,15 @@ class GameModel: ObservableObject {
     // continuously while the drag is active, so the fall speed tracks how
     // fast the player is actually dragging rather than snapping to one
     // fixed fast speed the instant a downward drag is detected.
-    private static let softDropIntervalRange = (lowerBound: 0.02, upperBound: 0.16)
+    // lowerBound is the FASTEST soft-drop tick. Kept deliberately gentle
+    // (~0.07s/row ≈ 14 rows/sec, not a slam) — hard drop is the button's job;
+    // soft-drop is just a controllable hurry-along.
+    private static let softDropIntervalRange = (lowerBound: 0.07, upperBound: 0.16)
     private var softDropInterval: Double = GameModel.softDropIntervalRange.upperBound
     // The drag velocity (points/sec) at which soft drop reaches its fastest
-    // interval. Tuned empirically against tileSize-scale drag distances.
-    private static let softDropReferenceVelocity: Double = 900
+    // interval. Higher = you must slide faster before it tops out, so ordinary
+    // slides stay gentle.
+    private static let softDropReferenceVelocity: Double = 1400
 
     func beginSoftDrop() {
         guard phase == .playing, !isSoftDropping else { return }
