@@ -270,11 +270,16 @@ struct GameView: View {
 }
 
 // MARK: - Floating drop button
-// A translucent, draggable hard-drop control that hovers over the board — a
-// thumb-reachable alternative to the swipe-down drop, in the spirit of an
-// arcade fire button. Tap it to drop the falling piece instantly; drag it to
-// reposition, and its spot persists (per-device, as a fraction of the screen,
-// so it survives relaunches and adapts to any size). Defaults to bottom-right.
+// A translucent control that hovers over the board — a thumb-reachable
+// alternative to the swipe-down drop, in the spirit of an arcade fire button.
+// Three interactions from one control:
+//   • Tap                     → hard-drop the falling piece instantly.
+//   • Drag DOWN (press & push) → soft-drop, faster the faster you push —
+//                                like holding a pedal down. Release to stop.
+//   • Drag sideways / up       → reposition the button; its spot persists
+//                                (per-device, as a fraction of the screen, so
+//                                it survives relaunches and adapts to any size).
+// Defaults to bottom-right.
 struct FloatingDropButton: View {
     @ObservedObject var model: GameModel
     // Persisted center as a fraction of the screen. Default: lower-right,
@@ -283,11 +288,16 @@ struct FloatingDropButton: View {
     @AppStorage("lexisDropBtnFracY") private var fracY: Double = 0.70
     @State private var dragOffset: CGSize = .zero
     @State private var pressed = false
-    @State private var moved = false
+    @State private var mode: DragMode = .idle
+
+    // What the current in-flight gesture has committed to: nothing yet (could
+    // still end as a tap), pushing the piece down, or moving the button.
+    private enum DragMode { case idle, dropping, moving }
 
     private let size: CGFloat = 76
-    // Below this much finger travel a gesture counts as a tap (drop); beyond it,
-    // the button is being repositioned and must NOT fire a drop.
+    // Below this much finger travel a gesture stays a tap (hard drop). Beyond
+    // it, direction decides: a downward, vertical-dominant push soft-drops;
+    // anything else repositions the button.
     private let moveThreshold: CGFloat = 12
 
     var body: some View {
@@ -295,40 +305,72 @@ struct FloatingDropButton: View {
             let w = geo.size.width, h = geo.size.height
             let baseX = fracX * w, baseY = fracY * h
             button
-                .position(x: baseX + dragOffset.width, y: baseY + dragOffset.height)
+                // While pushing down, the button stays put (it's a pedal); only
+                // a reposition drag moves it under the finger.
+                .position(x: baseX + (mode == .moving ? dragOffset.width : 0),
+                          y: baseY + (mode == .moving ? dragOffset.height : 0))
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { v in
-                            if !moved && (abs(v.translation.width) > moveThreshold ||
-                                          abs(v.translation.height) > moveThreshold) {
-                                moved = true
-                                Haptics.light()   // "picked up" cue
-                            }
-                            if moved { dragOffset = v.translation }
                             if !pressed { withAnimation(.easeOut(duration: 0.1)) { pressed = true } }
+                            let dx = v.translation.width, dy = v.translation.height
+                            // Decide the gesture's intent once, past the tap
+                            // threshold. Any downward push soft-drops (the whole
+                            // point of the pedal); a sideways/upward drag moves
+                            // the button. Drive the switch off a LOCAL so it
+                            // doesn't depend on the @State write landing first.
+                            var current = mode
+                            if current == .idle {
+                                if dy > moveThreshold {
+                                    current = .dropping
+                                    mode = .dropping
+                                    model.beginSoftDrop()   // fires its own haptic
+                                } else if abs(dx) > moveThreshold || dy < -moveThreshold {
+                                    current = .moving
+                                    mode = .moving
+                                    Haptics.light()          // "picked up" cue
+                                }
+                            }
+                            switch current {
+                            case .dropping:
+                                // Speed follows how FAR you've pushed down, not
+                                // instantaneous velocity — so holding the button
+                                // pressed keeps it dropping fast instead of
+                                // sagging back to the base rate when the finger
+                                // stops moving. ~110pt of travel reaches max.
+                                model.updateSoftDropSpeed(velocity: Double(max(0, dy)) * 8)
+                            case .moving:
+                                dragOffset = v.translation
+                            case .idle:
+                                break
+                            }
                         }
                         .onEnded { v in
                             withAnimation(.easeOut(duration: 0.15)) { pressed = false }
-                            if moved {
+                            switch mode {
+                            case .dropping:
+                                model.endSoftDrop()
+                            case .moving:
                                 // Commit the new spot, clamped fully on-screen.
                                 let margin = size / 2 + 6
                                 let cx = min(max(baseX + v.translation.width, margin), w - margin)
                                 let cy = min(max(baseY + v.translation.height, margin), h - margin)
                                 fracX = Double(cx / w)
                                 fracY = Double(cy / h)
-                                dragOffset = .zero
-                                moved = false
-                            } else {
-                                // A tap → hard drop.
+                            case .idle:
+                                // No committed drag → a tap → hard drop.
                                 model.dropFast()
                                 Haptics.medium()
                             }
+                            dragOffset = .zero
+                            mode = .idle
                         }
                 )
         }
         .ignoresSafeArea()
         .accessibilityElement()
         .accessibilityLabel("Drop piece")
+        .accessibilityHint("Double-tap to drop. Drag down to soft-drop faster.")
         .accessibilityAddTraits(.isButton)
     }
 

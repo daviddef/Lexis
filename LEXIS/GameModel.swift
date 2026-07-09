@@ -233,7 +233,16 @@ class GameSettings: ObservableObject {
         let savedTheme = UserDefaults.standard.string(forKey: "lexisTileTheme") ?? TileTheme.classic.rawValue
         self.tileTheme = TileTheme(rawValue: savedTheme) ?? .classic
         self.equippedBurst = BurstStyle(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBurst") ?? "") ?? .shards
-        self.equippedBackdrop = BoardBackdrop(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBackdrop") ?? "") ?? .none
+        // Default to "Match Theme" so a fresh install shows each tile theme's
+        // matching scene automatically (fish for Ocean, stars for Violet, …).
+        // Only fall back to it when the player has NEVER chosen a backdrop —
+        // an explicit saved value (including a deliberate "None") is respected.
+        if let savedBackdrop = UserDefaults.standard.string(forKey: "lexisEquippedBackdrop"),
+           let bd = BoardBackdrop(rawValue: savedBackdrop) {
+            self.equippedBackdrop = bd
+        } else {
+            self.equippedBackdrop = .matchTheme
+        }
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
         self.floatingDropButton = UserDefaults.standard.object(forKey: "lexisFloatingDropButton") as? Bool ?? true
 
