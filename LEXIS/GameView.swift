@@ -269,6 +269,90 @@ struct GameView: View {
     }
 }
 
+// MARK: - Floating drop button
+// A translucent, draggable hard-drop control that hovers over the board — a
+// thumb-reachable alternative to the swipe-down drop, in the spirit of an
+// arcade fire button. Tap it to drop the falling piece instantly; drag it to
+// reposition, and its spot persists (per-device, as a fraction of the screen,
+// so it survives relaunches and adapts to any size). Defaults to bottom-right.
+struct FloatingDropButton: View {
+    @ObservedObject var model: GameModel
+    // Persisted center as a fraction of the screen. Default: lower-right,
+    // clear of the very bottom controls and the home indicator.
+    @AppStorage("lexisDropBtnFracX") private var fracX: Double = 0.84
+    @AppStorage("lexisDropBtnFracY") private var fracY: Double = 0.70
+    @State private var dragOffset: CGSize = .zero
+    @State private var pressed = false
+    @State private var moved = false
+
+    private let size: CGFloat = 76
+    // Below this much finger travel a gesture counts as a tap (drop); beyond it,
+    // the button is being repositioned and must NOT fire a drop.
+    private let moveThreshold: CGFloat = 12
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let baseX = fracX * w, baseY = fracY * h
+            button
+                .position(x: baseX + dragOffset.width, y: baseY + dragOffset.height)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { v in
+                            if !moved && (abs(v.translation.width) > moveThreshold ||
+                                          abs(v.translation.height) > moveThreshold) {
+                                moved = true
+                                Haptics.light()   // "picked up" cue
+                            }
+                            if moved { dragOffset = v.translation }
+                            if !pressed { withAnimation(.easeOut(duration: 0.1)) { pressed = true } }
+                        }
+                        .onEnded { v in
+                            withAnimation(.easeOut(duration: 0.15)) { pressed = false }
+                            if moved {
+                                // Commit the new spot, clamped fully on-screen.
+                                let margin = size / 2 + 6
+                                let cx = min(max(baseX + v.translation.width, margin), w - margin)
+                                let cy = min(max(baseY + v.translation.height, margin), h - margin)
+                                fracX = Double(cx / w)
+                                fracY = Double(cy / h)
+                                dragOffset = .zero
+                                moved = false
+                            } else {
+                                // A tap → hard drop.
+                                model.dropFast()
+                                Haptics.medium()
+                            }
+                        }
+                )
+        }
+        .ignoresSafeArea()
+        .accessibilityElement()
+        .accessibilityLabel("Drop piece")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var button: some View {
+        ZStack {
+            Circle().fill(.ultraThinMaterial)
+            Circle().fill(Color.lexisAccent.opacity(pressed ? 0.35 : 0.16))
+            Circle().strokeBorder(Color.lexisAccent.opacity(0.55), lineWidth: 1.5)
+            VStack(spacing: 0) {
+                Image(systemName: "arrow.down.to.line")
+                    .font(.system(size: 24, weight: .black))
+                Text("DROP")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .tracking(1)
+            }
+            .foregroundColor(.lexisAccent)
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(pressed ? 0.9 : 1)
+        .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+        .opacity(0.8)
+    }
+}
+
 // MARK: - Playing View
 struct PlayingView: View {
     @ObservedObject var model: GameModel
@@ -535,6 +619,14 @@ struct PlayingView: View {
                     Spacer()
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            // Floating, draggable hard-drop button. Only during active play
+            // (not while paused, so it never sits over the pause menu). Tap to
+            // drop, drag to reposition — see FloatingDropButton.
+            if model.phase == .playing && model.settings.floatingDropButton {
+                FloatingDropButton(model: model)
+                    .transition(.opacity)
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: model.phase)

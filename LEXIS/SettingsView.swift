@@ -115,6 +115,13 @@ struct SettingsView: View {
                                     subtitle: "Preview where your letter will land",
                                     isOn: $settings.showGhostPiece
                                 )
+                                Divider().background(Color.lexisBlockBorder.opacity(0.2))
+                                ToggleRow(
+                                    icon: "arrow.down.to.line",
+                                    title: "Floating Drop Button",
+                                    subtitle: "A movable tap-to-drop button over the board",
+                                    isOn: $settings.floatingDropButton
+                                )
                             }
                             .padding(.vertical, 6)
                             .padding(.horizontal, 16)

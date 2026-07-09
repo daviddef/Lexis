@@ -209,6 +209,12 @@ class GameSettings: ObservableObject {
     @Published var hasSeenTutorial: Bool {
         didSet { UserDefaults.standard.set(hasSeenTutorial, forKey: "lexisHasSeenTutorial") }
     }
+    // Shows a translucent, draggable "drop" button that floats over the board —
+    // a thumb-reachable alternative to the swipe-down hard-drop. On by default;
+    // players who prefer pure touch controls can hide it.
+    @Published var floatingDropButton: Bool {
+        didSet { UserDefaults.standard.set(floatingDropButton, forKey: "lexisFloatingDropButton") }
+    }
 
     private init() {
         let savedDiff = UserDefaults.standard.string(forKey: "lexisDifficulty") ?? Difficulty.classic.rawValue
@@ -229,6 +235,7 @@ class GameSettings: ObservableObject {
         self.equippedBurst = BurstStyle(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBurst") ?? "") ?? .shards
         self.equippedBackdrop = BoardBackdrop(rawValue: UserDefaults.standard.string(forKey: "lexisEquippedBackdrop") ?? "") ?? .none
         self.hasSeenTutorial = UserDefaults.standard.object(forKey: "lexisHasSeenTutorial") as? Bool ?? false
+        self.floatingDropButton = UserDefaults.standard.object(forKey: "lexisFloatingDropButton") as? Bool ?? true
 
         // Republish when the SYSTEM reduce-motion setting flips mid-session so
         // views recompute `motionReduced` live. Our own toggle already drives
