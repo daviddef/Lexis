@@ -1090,15 +1090,15 @@ class GameModel: ObservableObject {
     // continuously while the drag is active, so the fall speed tracks how
     // fast the player is actually dragging rather than snapping to one
     // fixed fast speed the instant a downward drag is detected.
-    // lowerBound is the FASTEST soft-drop tick (~0.035s/row ≈ 28 rows/sec at a
-    // brisk slide), upperBound the gentle floor when you barely slide. Tuned so
-    // an ordinary slide clearly hurries the piece without being an instant slam
-    // (hard drop is the button's job).
-    private static let softDropIntervalRange = (lowerBound: 0.035, upperBound: 0.14)
+    // lowerBound is the FASTEST soft-drop tick (~0.03s/row ≈ 33 rows/sec at a
+    // brisk slide); upperBound is the floor the moment you engage a slide
+    // (~0.09s/row ≈ 11 rows/sec) — already a clear hurry-along, not the old
+    // near-normal crawl. Hard drop (the button) remains the only instant option.
+    private static let softDropIntervalRange = (lowerBound: 0.03, upperBound: 0.09)
     private var softDropInterval: Double = GameModel.softDropIntervalRange.upperBound
     // The drag velocity (points/sec) at which soft drop reaches its fastest
-    // interval. Lower = ordinary slides reach a fast drop more readily.
-    private static let softDropReferenceVelocity: Double = 700
+    // interval. Low, so even an unhurried slide reaches a fast drop quickly.
+    private static let softDropReferenceVelocity: Double = 450
 
     func beginSoftDrop() {
         guard phase == .playing, !isSoftDropping else { return }

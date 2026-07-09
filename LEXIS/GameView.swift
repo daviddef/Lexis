@@ -473,6 +473,34 @@ struct PlayingView: View {
             recentWordsStrip
             controlsPanel
         }
+        // Touch steering + soft-drop, on the board VStack (NOT the outer ZStack)
+        // so it covers the play area but is NOT an ancestor of the floating drop
+        // button — that way dragging the button to reposition it never also
+        // steers/soft-drops the board. Slide LEFT/RIGHT to fling across columns;
+        // slide DOWN to soft-drop (speed tracks the slide speed). A
+        // .simultaneousGesture so tile taps (steer/preview) still work. Hard
+        // drop lives only on the floating button.
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 16)
+                .onChanged { value in
+                    let dx = value.translation.width, dy = value.translation.height
+                    if abs(dx) > abs(dy) {
+                        if model.isSoftDropping { model.endSoftDrop() }
+                        let step = (tileSize + 2) * 0.6
+                        let delta = dx - boardDragAccum
+                        if delta >= step { boardDragAccum += step; model.moveRight() }
+                        else if delta <= -step { boardDragAccum -= step; model.moveLeft() }
+                    } else if dy > 16 {
+                        if !model.isSoftDropping { model.beginSoftDrop() }
+                        model.updateSoftDropSpeed(velocity: value.velocity.height)
+                    }
+                }
+                .onEnded { _ in
+                    boardDragAccum = 0
+                    model.endSoftDrop()
+                }
+        )
         // Hardware-keyboard support (Simulator's Connect Hardware Keyboard,
         // or a real iPad with a keyboard case) — mirrors the touch controls
         // exactly rather than adding new capability: left/right match the
@@ -645,37 +673,6 @@ struct PlayingView: View {
                     .transition(.opacity)
             }
         }
-        // Whole-screen touch steering + soft-drop. Slide LEFT/RIGHT anywhere to
-        // fling the piece across columns; slide DOWN anywhere to soft-drop,
-        // faster the farther you slide (distance-based, so holding the slide
-        // keeps it dropping fast instead of sagging back). It's a
-        // .simultaneousGesture so tile taps (steer/preview) and the buttons all
-        // still work; the floating button's own high-priority gesture wins on
-        // the button itself. Hard drop lives only on that button now.
-        .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 16)
-                .onChanged { value in
-                    let dx = value.translation.width, dy = value.translation.height
-                    if abs(dx) > abs(dy) {
-                        if model.isSoftDropping { model.endSoftDrop() }
-                        let step = (tileSize + 2) * 0.6
-                        let delta = dx - boardDragAccum
-                        if delta >= step { boardDragAccum += step; model.moveRight() }
-                        else if delta <= -step { boardDragAccum -= step; model.moveLeft() }
-                    } else if dy > 16 {
-                        // Soft-drop speed tracks the SLIDE speed (points/sec),
-                        // so a gentle slide nudges it down and a fast slide
-                        // hurries it — without ever slamming (that's the button).
-                        if !model.isSoftDropping { model.beginSoftDrop() }
-                        model.updateSoftDropSpeed(velocity: value.velocity.height)
-                    }
-                }
-                .onEnded { _ in
-                    boardDragAccum = 0
-                    model.endSoftDrop()
-                }
-        )
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: model.phase)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.tutorialStep)
         .animation(.easeOut(duration: 0.3), value: model.isTutorialActive)
