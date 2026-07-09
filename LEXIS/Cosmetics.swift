@@ -144,7 +144,7 @@ enum BoardBackdrop: String, CaseIterable, Codable, Identifiable {
         case .forest: return "Forest"
         case .starfield: return "Starfield"
         case .rosePetals: return "Rose Petals"
-        case .goldRays: return "Gold Rays"
+        case .goldRays: return "Golden Desert"
         case .monoRain: return "Mono Rain"
         }
     }
@@ -231,37 +231,104 @@ struct OceanBackdrop: View {
 
     // yFrac, scale, seconds to cross, direction, phase 0…1, opacity
     private let fish: [(y: CGFloat, scale: CGFloat, dur: Double, dir: CGFloat, phase: Double, opacity: Double)] = [
-        (0.18, 1.0, 28, 1, 0.00, 0.16),
-        (0.34, 0.7, 22, -1, 0.45, 0.12),
-        (0.52, 1.3, 34, 1, 0.72, 0.14),
-        (0.68, 0.6, 19, -1, 0.20, 0.10),
-        (0.83, 0.9, 25, 1, 0.55, 0.13),
+        (0.12, 1.1, 30, 1, 0.00, 0.16),
+        (0.22, 0.6, 20, -1, 0.35, 0.11),
+        (0.34, 0.8, 24, -1, 0.55, 0.13),
+        (0.45, 1.4, 36, 1, 0.72, 0.15),
+        (0.55, 0.5, 17, 1, 0.15, 0.10),
+        (0.66, 0.9, 26, -1, 0.48, 0.13),
+        (0.75, 0.7, 22, 1, 0.85, 0.11),
+        (0.86, 1.2, 32, -1, 0.28, 0.14),
+    ]
+    // x-fraction, size, seconds to rise, phase, sway, opacity
+    private let bubbles: [(x: CGFloat, size: CGFloat, dur: Double, phase: Double, sway: CGFloat, op: Double)] = [
+        (0.10, 5, 15, 0.00, 8, 0.12), (0.20, 3, 19, 0.55, 6, 0.09),
+        (0.30, 7, 13, 0.30, 12, 0.14), (0.42, 4, 21, 0.70, 7, 0.10),
+        (0.52, 6, 16, 0.10, 10, 0.13), (0.63, 3, 23, 0.45, 6, 0.08),
+        (0.72, 5, 17, 0.85, 9, 0.11), (0.82, 8, 14, 0.20, 13, 0.15),
+        (0.90, 4, 20, 0.62, 7, 0.10),
+    ]
+    // Seaweed fronds along the seabed: x-fraction, height-fraction, phase.
+    private let weeds: [(x: CGFloat, h: CGFloat, phase: Double)] = [
+        (0.08, 0.20, 0.0), (0.18, 0.14, 0.5), (0.30, 0.24, 0.2),
+        (0.70, 0.16, 0.7), (0.82, 0.22, 0.3), (0.92, 0.13, 0.6),
     ]
 
     var body: some View {
         GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
             ZStack {
                 LinearGradient(colors: [
                     Color(red: 0.05, green: 0.20, blue: 0.30),
                     Color(red: 0.02, green: 0.06, blue: 0.12)
                 ], startPoint: .top, endPoint: .bottom)
 
-                ForEach(0..<fish.count, id: \.self) { i in
-                    let f = fish[i]
-                    FishView(width: geo.size.width, scale: f.scale, dur: f.dur, dir: f.dir,
-                             phase: f.phase, opacity: f.opacity, animate: !settings.motionReduced)
-                        .position(x: 0, y: geo.size.height * f.y)   // x driven inside
+                // Faint light shafts from the surface.
+                ForEach(0..<3, id: \.self) { i in
+                    Rectangle()
+                        .fill(LinearGradient(colors: [Color(red: 0.4, green: 0.7, blue: 0.85).opacity(0.06), .clear],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(width: 46, height: h * 0.8)
+                        .rotationEffect(.degrees([-10, -4, 6][i]), anchor: .top)
+                        .position(x: w * [0.3, 0.55, 0.78][i], y: h * 0.38)
+                        .blur(radius: 14)
                 }
 
-                // A couple of slow rising bubbles.
-                ForEach(0..<3, id: \.self) { i in
-                    BubbleView(x: geo.size.width * [0.25, 0.6, 0.85][i], height: geo.size.height,
-                               dur: [16.0, 21.0, 18.0][i], phase: [0.3, 0.7, 0.1][i],
+                ForEach(0..<fish.count, id: \.self) { i in
+                    let f = fish[i]
+                    FishView(width: w, scale: f.scale, dur: f.dur, dir: f.dir,
+                             phase: f.phase, opacity: f.opacity, animate: !settings.motionReduced)
+                        .position(x: 0, y: h * f.y)   // x driven inside
+                }
+
+                // A steady stream of rising bubbles.
+                ForEach(0..<bubbles.count, id: \.self) { i in
+                    let b = bubbles[i]
+                    BubbleView(x: w * b.x, height: h, size: b.size, dur: b.dur,
+                               phase: b.phase, sway: b.sway, opacity: b.op,
                                animate: !settings.motionReduced)
                 }
+
+                // Seabed silhouette with a few swaying weeds.
+                ForEach(0..<weeds.count, id: \.self) { i in
+                    let wd = weeds[i]
+                    SeaweedView(height: h * wd.h, phase: wd.phase, animate: !settings.motionReduced)
+                        .position(x: w * wd.x, y: h)
+                }
+                Path { p in
+                    p.move(to: .init(x: 0, y: h))
+                    p.addLine(to: .init(x: 0, y: h * 0.96))
+                    p.addCurve(to: .init(x: w, y: h * 0.97),
+                               control1: .init(x: w * 0.35, y: h * 0.93),
+                               control2: .init(x: w * 0.7, y: h))
+                    p.addLine(to: .init(x: w, y: h))
+                    p.closeSubpath()
+                }
+                .fill(Color(red: 0.01, green: 0.03, blue: 0.06).opacity(0.9))
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+// A tapering seaweed frond rooted at the seabed, gently swaying.
+private struct SeaweedView: View {
+    let height: CGFloat
+    let phase: Double
+    let animate: Bool
+    @State private var sway = false
+    var body: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Color(red: 0.10, green: 0.30, blue: 0.22).opacity(0.5))
+            .frame(width: 7, height: height)
+            .rotationEffect(.degrees(sway ? 7 : -7), anchor: .bottom)
+            .offset(y: -height / 2)
+            .onAppear {
+                guard animate else { return }
+                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true).delay(phase * 2)) {
+                    sway = true
+                }
+            }
     }
 }
 
@@ -311,22 +378,30 @@ private struct FishView: View {
 private struct BubbleView: View {
     let x: CGFloat
     let height: CGFloat
+    let size: CGFloat
     let dur: Double
     let phase: Double
+    let sway: CGFloat
+    let opacity: Double
     let animate: Bool
     @State private var t: CGFloat
 
-    init(x: CGFloat, height: CGFloat, dur: Double, phase: Double, animate: Bool) {
-        self.x = x; self.height = height; self.dur = dur; self.phase = phase; self.animate = animate
+    init(x: CGFloat, height: CGFloat, size: CGFloat = 6, dur: Double, phase: Double,
+         sway: CGFloat = 0, opacity: Double = 0.10, animate: Bool) {
+        self.x = x; self.height = height; self.size = size; self.dur = dur; self.phase = phase
+        self.sway = sway; self.opacity = opacity; self.animate = animate
         _t = State(initialValue: CGFloat(phase))
     }
 
     var body: some View {
         let frac = t - t.rounded(.down)
         let y = height + 20 - (height + 40) * frac   // rise from bottom to top
-        Circle().fill(Color.white.opacity(0.10))
-            .frame(width: 6, height: 6)
-            .position(x: x, y: y)
+        let wobble = sway == 0 ? 0 : sin((Double(frac) + phase) * .pi * 4) * Double(sway)
+        Circle()
+            .strokeBorder(Color.white.opacity(opacity), lineWidth: 1)
+            .background(Circle().fill(Color.white.opacity(opacity * 0.4)))
+            .frame(width: size, height: size)
+            .position(x: x + CGFloat(wobble), y: y)
             .onAppear {
                 guard animate else { return }
                 withAnimation(.linear(duration: dur).repeatForever(autoreverses: false)) { t = CGFloat(phase) + 1 }
@@ -629,49 +704,83 @@ private struct PetalShape: Shape {
     }
 }
 
-// MARK: - Gold Rays scene
-// A warm amber gradient with slow godrays and gold sparkles rising, evoking
-// treasure/light. Pairs with the gold tile theme.
+// MARK: - Golden Desert scene
+// A warm dusk sky over a low sun and layered, silhouetted sand dunes receding
+// into haze, with a little blowing sand for life. Pairs with the gold theme.
 struct GoldRaysBackdrop: View {
     @ObservedObject private var settings = GameSettings.shared
+    @State private var glow = false
 
-    private let sparks: [(x: CGFloat, size: CGFloat, dur: Double, phase: Double, sway: CGFloat, opacity: Double)] = [
-        (0.15, 5, 14, 0.00, 12, 0.5), (0.30, 3, 18, 0.45, 16, 0.35),
-        (0.45, 6, 12, 0.70, 10, 0.55), (0.60, 4, 20, 0.20, 18, 0.4),
-        (0.75, 3, 16, 0.55, 14, 0.32), (0.88, 5, 15, 0.30, 12, 0.45),
+    // Blowing sand: y-fraction, size, seconds to cross, direction, phase, opacity.
+    private let sand: [(y: CGFloat, size: CGFloat, dur: Double, dir: CGFloat, phase: Double, op: Double)] = [
+        (0.30, 3, 11, 1, 0.0, 0.25), (0.44, 2, 15, 1, 0.5, 0.18),
+        (0.52, 4, 9, 1, 0.3, 0.22), (0.38, 2, 13, 1, 0.7, 0.16),
+        (0.60, 3, 12, 1, 0.15, 0.20),
     ]
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
             ZStack {
+                // Dusk sky.
                 LinearGradient(colors: [
-                    Color(red: 0.20, green: 0.14, blue: 0.03),
-                    Color(red: 0.09, green: 0.06, blue: 0.02)
+                    Color(red: 0.55, green: 0.32, blue: 0.12),
+                    Color(red: 0.70, green: 0.40, blue: 0.16),
+                    Color(red: 0.30, green: 0.16, blue: 0.08)
                 ], startPoint: .top, endPoint: .bottom)
 
-                // A few soft godrays fanning from the top.
-                ForEach(0..<4, id: \.self) { i in
-                    let cx = [0.2, 0.4, 0.6, 0.8][i]
-                    Rectangle()
-                        .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.85, blue: 0.5).opacity(0.10), .clear],
-                                             startPoint: .top, endPoint: .bottom))
-                        .frame(width: 40, height: h * 0.9)
-                        .rotationEffect(.degrees([-8, -3, 3, 8][i]), anchor: .top)
-                        .position(x: w * cx, y: h * 0.45)
-                        .blur(radius: 12)
-                }
+                // Low sun with a soft breathing glow, sitting near the horizon.
+                Circle()
+                    .fill(RadialGradient(colors: [Color(red: 1.0, green: 0.82, blue: 0.45).opacity(0.55), .clear],
+                                         center: .center, startRadius: 2, endRadius: 150 * (glow ? 1.06 : 1.0)))
+                    .frame(width: 320, height: 320)
+                    .position(x: w * 0.5, y: h * 0.42)
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.78, blue: 0.42).opacity(0.5))
+                    .frame(width: 110, height: 110)
+                    .position(x: w * 0.5, y: h * 0.42)
 
-                ForEach(0..<sparks.count, id: \.self) { i in
-                    let s = sparks[i]
-                    Drifter(axis: .vertical, rising: true, cross: w * s.x, extent: h, sway: s.sway,
+                // Blowing sand motes, low over the dunes.
+                ForEach(0..<sand.count, id: \.self) { i in
+                    let s = sand[i]
+                    Drifter(axis: .horizontal, cross: h * s.y, extent: w, sway: 4,
                             dur: s.dur, phase: s.phase, animate: !settings.motionReduced) {
-                        Mote(color: Color(red: 1.0, green: 0.85, blue: 0.45).opacity(s.opacity), size: s.size)
+                        Mote(color: Color(red: 0.95, green: 0.8, blue: 0.5).opacity(s.op), size: s.size)
                     }
                 }
+
+                // Layered dune silhouettes, back (hazy/light) to front (dark).
+                dune(w: w, h: h, baseY: 0.55, crest: 0.06, dip: 0.10,
+                     color: Color(red: 0.45, green: 0.26, blue: 0.12).opacity(0.7))
+                dune(w: w, h: h, baseY: 0.68, crest: 0.10, dip: 0.05,
+                     color: Color(red: 0.32, green: 0.17, blue: 0.08).opacity(0.85))
+                dune(w: w, h: h, baseY: 0.82, crest: 0.08, dip: 0.12,
+                     color: Color(red: 0.16, green: 0.08, blue: 0.04))
+            }
+            .onAppear {
+                guard !settings.motionReduced else { return }
+                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) { glow = true }
             }
         }
         .ignoresSafeArea()
+    }
+
+    // One dune layer: a smooth ridge with a crest left-of-centre and a dip to
+    // the right, filled down to the bottom of the screen.
+    private func dune(w: CGFloat, h: CGFloat, baseY: CGFloat, crest: CGFloat, dip: CGFloat, color: Color) -> some View {
+        Path { p in
+            p.move(to: .init(x: 0, y: h))
+            p.addLine(to: .init(x: 0, y: h * (baseY + 0.02)))
+            p.addCurve(to: .init(x: w * 0.5, y: h * (baseY - crest)),
+                       control1: .init(x: w * 0.18, y: h * (baseY + 0.03)),
+                       control2: .init(x: w * 0.34, y: h * (baseY - crest)))
+            p.addCurve(to: .init(x: w, y: h * (baseY + dip)),
+                       control1: .init(x: w * 0.7, y: h * (baseY - crest + 0.02)),
+                       control2: .init(x: w * 0.86, y: h * (baseY + dip)))
+            p.addLine(to: .init(x: w, y: h))
+            p.closeSubpath()
+        }
+        .fill(color)
     }
 }
 

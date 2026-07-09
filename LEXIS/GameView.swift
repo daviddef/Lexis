@@ -270,16 +270,14 @@ struct GameView: View {
 }
 
 // MARK: - Floating drop button
-// A translucent control that hovers over the board — a thumb-reachable
-// alternative to the swipe-down drop, in the spirit of an arcade fire button.
-// Three interactions from one control:
-//   • Tap                     → hard-drop the falling piece instantly.
-//   • Drag DOWN (press & push) → soft-drop, faster the faster you push —
-//                                like holding a pedal down. Release to stop.
-//   • Drag sideways / up       → reposition the button; its spot persists
-//                                (per-device, as a fraction of the screen, so
-//                                it survives relaunches and adapts to any size).
-// Defaults to bottom-right.
+// A translucent HARD-DROP control that hovers over the board — a thumb-reachable
+// fire button, in the spirit of an arcade game.
+//   • Tap  → hard-drop (slam) the falling piece instantly.
+//   • Drag → reposition the button; its spot persists (per-device, as a
+//            fraction of the screen, so it survives relaunches and adapts to
+//            any size). Defaults to bottom-right.
+// Soft-drop is NOT here — it's a slide-down anywhere on the board (see the
+// board drag gesture), so this button stays a single-purpose "slam" control.
 struct FloatingDropButton: View {
     @ObservedObject var model: GameModel
     // Persisted center as a fraction of the screen. Default: lower-right,
@@ -291,8 +289,8 @@ struct FloatingDropButton: View {
     @State private var mode: DragMode = .idle
 
     // What the current in-flight gesture has committed to: nothing yet (could
-    // still end as a tap), pushing the piece down, or moving the button.
-    private enum DragMode { case idle, dropping, moving }
+    // still end as a tap = hard drop) or moving the button.
+    private enum DragMode { case idle, moving }
 
     private let size: CGFloat = 76
     // Below this much finger travel a gesture stays a tap (hard drop). Beyond
@@ -305,60 +303,36 @@ struct FloatingDropButton: View {
             let w = geo.size.width, h = geo.size.height
             let baseX = fracX * w, baseY = fracY * h
             button
-                // While pushing down, the button stays put (it's a pedal); only
-                // a reposition drag moves it under the finger.
                 .position(x: baseX + (mode == .moving ? dragOffset.width : 0),
                           y: baseY + (mode == .moving ? dragOffset.height : 0))
-                .gesture(
+                .highPriorityGesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { v in
                             if !pressed { withAnimation(.easeOut(duration: 0.1)) { pressed = true } }
-                            let dx = v.translation.width, dy = v.translation.height
-                            // Decide the gesture's intent once, past the tap
-                            // threshold. Any downward push soft-drops (the whole
-                            // point of the pedal); a sideways/upward drag moves
-                            // the button. Drive the switch off a LOCAL so it
-                            // doesn't depend on the @State write landing first.
+                            // Past the threshold the button is being repositioned
+                            // (a clean tap = hard drop; soft-drop lives on the
+                            // whole-screen slide-down instead). Drive off a LOCAL
+                            // so it doesn't depend on the @State write landing.
                             var current = mode
-                            if current == .idle {
-                                if dy > moveThreshold {
-                                    current = .dropping
-                                    mode = .dropping
-                                    model.beginSoftDrop()   // fires its own haptic
-                                } else if abs(dx) > moveThreshold || dy < -moveThreshold {
-                                    current = .moving
-                                    mode = .moving
-                                    Haptics.light()          // "picked up" cue
-                                }
+                            if current == .idle,
+                               abs(v.translation.width) > moveThreshold || abs(v.translation.height) > moveThreshold {
+                                current = .moving
+                                mode = .moving
+                                Haptics.light()   // "picked up" cue
                             }
-                            switch current {
-                            case .dropping:
-                                // Speed follows how FAR you've pushed down, not
-                                // instantaneous velocity — so holding the button
-                                // pressed keeps it dropping fast instead of
-                                // sagging back to the base rate when the finger
-                                // stops moving. ~110pt of travel reaches max.
-                                model.updateSoftDropSpeed(velocity: Double(max(0, dy)) * 8)
-                            case .moving:
-                                dragOffset = v.translation
-                            case .idle:
-                                break
-                            }
+                            if current == .moving { dragOffset = v.translation }
                         }
                         .onEnded { v in
                             withAnimation(.easeOut(duration: 0.15)) { pressed = false }
-                            switch mode {
-                            case .dropping:
-                                model.endSoftDrop()
-                            case .moving:
+                            if mode == .moving {
                                 // Commit the new spot, clamped fully on-screen.
                                 let margin = size / 2 + 6
                                 let cx = min(max(baseX + v.translation.width, margin), w - margin)
                                 let cy = min(max(baseY + v.translation.height, margin), h - margin)
                                 fracX = Double(cx / w)
                                 fracY = Double(cy / h)
-                            case .idle:
-                                // No committed drag → a tap → hard drop.
+                            } else {
+                                // A clean tap → hard drop.
                                 model.dropFast()
                                 Haptics.medium()
                             }
@@ -370,7 +344,7 @@ struct FloatingDropButton: View {
         .ignoresSafeArea()
         .accessibilityElement()
         .accessibilityLabel("Drop piece")
-        .accessibilityHint("Double-tap to drop. Drag down to soft-drop faster.")
+        .accessibilityHint("Tap to drop instantly. Drag to move the button.")
         .accessibilityAddTraits(.isButton)
     }
 
@@ -671,6 +645,34 @@ struct PlayingView: View {
                     .transition(.opacity)
             }
         }
+        // Whole-screen touch steering + soft-drop. Slide LEFT/RIGHT anywhere to
+        // fling the piece across columns; slide DOWN anywhere to soft-drop,
+        // faster the farther you slide (distance-based, so holding the slide
+        // keeps it dropping fast instead of sagging back). It's a
+        // .simultaneousGesture so tile taps (steer/preview) and the buttons all
+        // still work; the floating button's own high-priority gesture wins on
+        // the button itself. Hard drop lives only on that button now.
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 16)
+                .onChanged { value in
+                    let dx = value.translation.width, dy = value.translation.height
+                    if abs(dx) > abs(dy) {
+                        if model.isSoftDropping { model.endSoftDrop() }
+                        let step = (tileSize + 2) * 0.6
+                        let delta = dx - boardDragAccum
+                        if delta >= step { boardDragAccum += step; model.moveRight() }
+                        else if delta <= -step { boardDragAccum -= step; model.moveLeft() }
+                    } else if dy > 16 {
+                        if !model.isSoftDropping { model.beginSoftDrop() }
+                        model.updateSoftDropSpeed(velocity: Double(dy) * 8)
+                    }
+                }
+                .onEnded { _ in
+                    boardDragAccum = 0
+                    model.endSoftDrop()
+                }
+        )
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: model.phase)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.tutorialStep)
         .animation(.easeOut(duration: 0.3), value: model.isTutorialActive)
@@ -881,47 +883,6 @@ struct PlayingView: View {
                         }
                     }
                 }
-                // Slide steering + soft-drop, layered on top of the tap
-                // controls. A horizontal drag flings the piece across
-                // columns fast (tracking the finger, ~0.6 tile per column);
-                // a downward drag soft-drops at a speed that follows the
-                // drag velocity. minimumDistance 16 is high enough that the
-                // small jitter between a double-tap's two taps never trips
-                // the drag, so tap-to-move and double-tap stay reliable.
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 16)
-                        .onChanged { value in
-                            if abs(value.translation.width) > abs(value.translation.height) {
-                                if model.isSoftDropping { model.endSoftDrop() }
-                                let step = (tileSize + 2) * 0.6
-                                let delta = value.translation.width - boardDragAccum
-                                if delta >= step {
-                                    boardDragAccum += step
-                                    model.moveRight()
-                                } else if delta <= -step {
-                                    boardDragAccum -= step
-                                    model.moveLeft()
-                                }
-                            } else if value.translation.height > 16 {
-                                if !model.isSoftDropping { model.beginSoftDrop() }
-                                model.updateSoftDropSpeed(velocity: value.velocity.height)
-                            }
-                        }
-                        .onEnded { value in
-                            boardDragAccum = 0
-                            model.endSoftDrop()
-                            // A decisive downward swipe hard-drops the piece —
-                            // the deliberate, unambiguous replacement for the
-                            // old double-tap-to-drop. Must be clearly vertical
-                            // and travel a few tiles so a small soft-drop nudge
-                            // never triggers it.
-                            if value.translation.height > tileSize * 3,
-                               abs(value.translation.width) < abs(value.translation.height) {
-                                model.dropFast()
-                            }
-                        }
-                )
 
                 // The falling piece, as a free-floating overlay that GLIDES
                 // between cells instead of hard-stepping. It descends over
