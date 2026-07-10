@@ -22,7 +22,7 @@ Tip: turn on a nice tile **theme** and **backdrop** before shooting 2–3.
 - [ ] Name, subtitle, promo text, keywords, description → from `app-store-listing.md`
 - [ ] Primary/secondary category: Word / Puzzle
 - [ ] Age rating questionnaire → 4+
-- [ ] Marketing URL, Support URL, Privacy Policy URL → deployed `web/` on `daviddef.github.io/Lexis/`
+- [ ] Marketing URL, Support URL, Privacy Policy URL → deployed `docs/` on `daviddef.github.io/Lexis/`
 - [ ] Privacy nutrition label (Game Center only for this ad-free 1.0)
 - [ ] App icon (already in the asset catalogue)
 
@@ -43,4 +43,4 @@ Tip: turn on a nice tile **theme** and **backdrop** before shooting 2–3.
 - [ ] AdMob SDK behind `RewardedAdProvider` + ATT prompt → then update the
       privacy label with advertising disclosures
 - [ ] Analytics vendor (TelemetryDeck) one-line attach in `attachDefaultSinks()`
-- [ ] Deploy `web/` (marketing + privacy + app-ads.txt) to `daviddef.github.io/Lexis/`
+- [ ] Deploy `docs/` (marketing + privacy + app-ads.txt) to `daviddef.github.io/Lexis/`

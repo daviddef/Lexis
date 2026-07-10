@@ -17,7 +17,7 @@ subpath like `user.github.io/lexis/app-ads.txt` will **not** be found. So the
 host has to serve this folder as the site root:
 
 - **Netlify / Cloudflare Pages / Vercel (fastest, free):** drag-and-drop this
-  `web/` folder (or point the host at it). You get a root domain like
+  `docs/` folder (or point the host at it). You get a root domain like
   `lexis.netlify.app` that serves `/app-ads.txt`, `/`, and `/privacy.html`.
 - **GitHub Pages user site:** put these files in a repo named
   `<username>.github.io` so they serve at `https://<username>.github.io/`.
