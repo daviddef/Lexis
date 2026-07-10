@@ -2033,6 +2033,14 @@ struct MenuView: View {
     @ObservedObject private var goalsManager = GoalsManager.shared
     @ObservedObject private var weekly = WeeklyEventManager.shared
     @ObservedObject private var ads = AdManager.shared
+    // On iPad (regular width) the menu is a centred, fixed-width column with
+    // tight gaps, rather than the phone layout stretched edge-to-edge with the
+    // greedy Spacers ballooning into big empty bands.
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    private var isRegularWidth: Bool { hSizeClass == .regular }
+    @ViewBuilder private var menuGap: some View {
+        Spacer(minLength: 0).frame(maxHeight: isRegularWidth ? 44 : .infinity)
+    }
     @State private var logoScale: CGFloat = 0.8
     @State private var logoGlow = false
     @State private var showDailyResults = false
@@ -2198,9 +2206,9 @@ struct MenuView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
-            
-            Spacer()
-            
+
+            menuGap
+
             // Logo
             VStack(spacing: 4) {
                 Text("LEXIS")
@@ -2241,8 +2249,8 @@ struct MenuView: View {
                     logoGlow = true
                 }
             }
-            
-            Spacer()
+
+            menuGap
 
             // How to play
             VStack(alignment: .leading, spacing: 12) {
@@ -2276,9 +2284,9 @@ struct MenuView: View {
                     )
             )
             .padding(.horizontal, 24)
-            
-            Spacer()
-            
+
+            menuGap
+
             // Daily Challenge — the featured mode. Same letter sequence for
             // every player each day, one attempt, streak tracking.
             Button {
@@ -2420,8 +2428,10 @@ struct MenuView: View {
             .buttonStyle(LexisPrimaryButtonStyle())
             .padding(.horizontal, 32)
 
-            Spacer()
+            menuGap
         }
+        .frame(maxWidth: isRegularWidth ? 620 : .infinity)
+        .frame(maxWidth: .infinity)   // centre the fixed-width column
         .sheet(isPresented: $showDailyResults) {
             if let result = dailyManager.todayResult {
                 DailyResultView(result: result, streak: dailyManager.currentStreak)
