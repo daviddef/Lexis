@@ -11,6 +11,7 @@
 		1C03E066B2D47F5763AC7AAF /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4004408499B751AFCEEFF955 /* SoundManager.swift */; };
 		22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41DDE36C3A5E46BA85D5578 /* GameModel.swift */; };
 		2463C17FE7820119872350D6 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2B5E54D4027A3170AF93C6 /* NotificationManager.swift */; };
+		3767B3EAB5E0C61DA24A8F86 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = E944EA45C4DE81377FDF77DA /* GoogleMobileAds */; };
 		3874283E9BF9188B2B46A617 /* DataMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B17DD68C79088619B3469EB /* DataMigration.swift */; };
 		3EBAA50613F7CA25FCFC132B /* Progression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE69FA2CB4882A3BF24C6C /* Progression.swift */; };
 		4984BD2AF85A996197FBAD34 /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EFBB60638E699AB1E1976E2 /* CloudSync.swift */; };
@@ -19,6 +20,7 @@
 		58E8A642B2F1780A790EE1DE /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BCA92EFAF6939161B4B302F /* Analytics.swift */; };
 		5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CFDE30095075626DBA2E44 /* GameCenterManager.swift */; };
 		69EF15952BB6BD740E3D891F /* LexisWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3447805539796661F1B3F20A /* LexisWidgetBundle.swift */; };
+		6F0262066687E998D5ECE746 /* GoogleAds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 117AB627391B1089F76B415A /* GoogleAds.swift */; };
 		70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */; };
 		81C4F39B56615A5FC9476A29 /* LexisWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3E643DB65640DCA73650FD /* LexisWidget.swift */; };
 		9B6B869A9BB3C359D5F9DCF4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91BD40CA77F62987EA453C39 /* SettingsView.swift */; };
@@ -62,6 +64,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		10716165C912BE4CF976B379 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		117AB627391B1089F76B415A /* GoogleAds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAds.swift; sourceTree = "<group>"; };
 		11D8723C6EBA8B8172AB67D3 /* TileTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileTheme.swift; sourceTree = "<group>"; };
 		263C4CFFE7701C755DB6E37E /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		2EFBB60638E699AB1E1976E2 /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
@@ -96,6 +100,17 @@
 		ED8985306D4952468BB2F52A /* MetricKitReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKitReporter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		C0931686591BFB05FA404DE9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3767B3EAB5E0C61DA24A8F86 /* GoogleMobileAds in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		3A9B2FEC0A6DE2CC5BCAF363 /* Resources */ = {
 			isa = PBXGroup;
@@ -120,6 +135,8 @@
 				58CFDE30095075626DBA2E44 /* GameCenterManager.swift */,
 				A41DDE36C3A5E46BA85D5578 /* GameModel.swift */,
 				9BB923545BDA3934E8D366F7 /* GameView.swift */,
+				117AB627391B1089F76B415A /* GoogleAds.swift */,
+				10716165C912BE4CF976B379 /* Info.plist */,
 				6B7FAF78D3FC31EEC09AF447 /* LaunchScreenView.swift */,
 				95FFF973E8A49431A9DFA7E8 /* LEXIS.entitlements */,
 				4CA2BF68BF21D62FEBD3C7C6 /* LexisApp.swift */,
@@ -176,6 +193,7 @@
 			buildPhases = (
 				9065D8670A8D73F00C6E2498 /* Sources */,
 				34679A7A2A864FE299A8E5E1 /* Resources */,
+				C0931686591BFB05FA404DE9 /* Frameworks */,
 				1AD7B1BFED5034616C1730CA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -185,6 +203,7 @@
 			);
 			name = LEXIS;
 			packageProductDependencies = (
+				E944EA45C4DE81377FDF77DA /* GoogleMobileAds */,
 			);
 			productName = LEXIS;
 			productReference = 9F4D3A75F55AA5A04332F034 /* LEXIS.app */;
@@ -235,6 +254,9 @@
 			);
 			mainGroup = 914B7B8B36AF0118CD3D574C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C063F0881D653DDD352B014C /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BB0F4BF76CC7973451A67574 /* Products */;
 			projectDirPath = "";
@@ -283,6 +305,7 @@
 				5B18D208B632B208AE066CA8 /* GameCenterManager.swift in Sources */,
 				22495C03B7E9D57792FC2659 /* GameModel.swift in Sources */,
 				A4B7F5F01DFF8A232E4C5EE1 /* GameView.swift in Sources */,
+				6F0262066687E998D5ECE746 /* GoogleAds.swift in Sources */,
 				4B496A09586755DD481D6B26 /* LaunchScreenView.swift in Sources */,
 				70CAE3FDE04E34330C8ED776 /* LexisApp.swift in Sources */,
 				AEC5B9F55A6FBE483A6F507B /* MetricKitReporter.swift in Sources */,
@@ -318,9 +341,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GAD_APPLICATION_IDENTIFIER = "ca-app-pub-3940256099942544~1458002511";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LEXIS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "LEXIS uses this to show you more relevant ads. You can play with non-personalized ads instead — your choice.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -348,9 +374,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
+				GAD_APPLICATION_IDENTIFIER = "ca-app-pub-3940256099942544~1458002511";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LEXIS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LEXIS;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "LEXIS uses this to show you more relevant ads. You can play with non-personalized ads instead — your choice.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -567,6 +596,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C063F0881D653DDD352B014C /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E944EA45C4DE81377FDF77DA /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C063F0881D653DDD352B014C /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AE525BCF5EA95205F7290D6B /* Project object */;
 }

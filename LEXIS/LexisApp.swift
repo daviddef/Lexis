@@ -30,11 +30,11 @@ struct LexisApp: App {
             GoalsManager.shared.loadOrGenerate()
             // Roll the weekly event forward if the week/weekend flavour changed.
             WeeklyEventManager.shared.refresh()
-            // Rewarded ads: attach the network provider. nil → DEBUG stub so
-            // the watch→reward flow is testable now; a real build with no
-            // provider simply shows no ads. Wire an AdMob/AppLovin provider
-            // here once the SDK + ad units exist.
-            AdManager.shared.configure(nil)
+            // Rewarded ads: resolve consent + ATT, then attach the AdMob
+            // provider. No-ops safely when ads aren't configured (release
+            // builds with no real ad unit stay ad-free and never prompt) —
+            // see AdsConfig in GoogleAds.swift.
+            await AdsBootstrap.start()
         }
     }
     

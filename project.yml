@@ -7,6 +7,12 @@ options:
 configs:
   Debug: debug
   Release: release
+# Google Mobile Ads (AdMob) — rewarded, opt-in ads only. See LEXIS/GoogleAds.swift
+# for the switch that keeps release builds ad-free until real AdMob IDs are set.
+packages:
+  GoogleMobileAds:
+    url: https://github.com/googleads/swift-package-manager-google-mobile-ads.git
+    from: 12.0.0
 # Define the app scheme explicitly (and shared) so `xcodegen generate` always
 # emits LEXIS as the primary run target. Without this, regenerating wipes
 # schemes and Xcode auto-creates one per target — sometimes leaving the
@@ -37,6 +43,10 @@ targets:
     dependencies:
       - target: LexisWidgetExtension
         embed: true
+      # One product only — it pulls in GoogleUserMessagingPlatform (the UMP
+      # consent SDK) transitively, so `import UserMessagingPlatform` resolves.
+      - package: GoogleMobileAds
+        product: GoogleMobileAds
     entitlements:
       path: LEXIS/LEXIS.entitlements
       properties:
@@ -73,13 +83,18 @@ targets:
         # this up front means App Store Connect stops asking the export
         # compliance question interactively on every single upload.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
-        # NOTE: NSUserTrackingUsageDescription is intentionally NOT set. This
-        # build does no tracking (no ad SDK is wired), so shipping the ATT
-        # string makes App Store Connect flag "you say you'll track but declare
-        # no tracking data types." RE-ADD this key in the build that actually
-        # integrates AdMob/AppLovin + the ATT prompt, and declare the tracking
-        # data types in the privacy nutrition label at the same time:
-        #   INFOPLIST_KEY_NSUserTrackingUsageDescription: "LEXIS uses this to show you more relevant ads. You can play with non-personalized ads instead — your choice."
+        # Shown in the App Tracking Transparency prompt. Ads ship live in 2.0,
+        # so this is set for BOTH configs — and the privacy nutrition label MUST
+        # declare Third-Party Advertising + the device identifier to match.
+        INFOPLIST_KEY_NSUserTrackingUsageDescription: "LEXIS uses this to show you more relevant ads. You can play with non-personalized ads instead — your choice."
+        # A PARTIAL plist holding only the keys GENERATE_INFOPLIST_FILE can't
+        # emit (GADApplicationIdentifier, SKAdNetworkItems). Xcode MERGES the
+        # generated INFOPLIST_KEY_* values into it, so both mechanisms coexist.
+        INFOPLIST_FILE: LEXIS/Info.plist
+        # >>> Your AdMob App ID (AdMob console → Apps → LEXIS → App settings).
+        #     Referenced as $(GAD_APPLICATION_IDENTIFIER) from LEXIS/Info.plist.
+        #     Currently Google's TEST app id — REPLACE before shipping ads.
+        GAD_APPLICATION_IDENTIFIER: "ca-app-pub-3940256099942544~1458002511"
 
   # Home Screen widget showing the Daily Challenge streak and whether
   # today's puzzle is done. Reads the same App Group container the main app
