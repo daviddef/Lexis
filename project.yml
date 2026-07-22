@@ -91,10 +91,10 @@ targets:
         # emit (GADApplicationIdentifier, SKAdNetworkItems). Xcode MERGES the
         # generated INFOPLIST_KEY_* values into it, so both mechanisms coexist.
         INFOPLIST_FILE: LEXIS/Info.plist
-        # >>> Your AdMob App ID (AdMob console → Apps → LEXIS → App settings).
-        #     Referenced as $(GAD_APPLICATION_IDENTIFIER) from LEXIS/Info.plist.
-        #     Currently Google's TEST app id — REPLACE before shipping ads.
-        GAD_APPLICATION_IDENTIFIER: "ca-app-pub-3940256099942544~1458002511"
+        # LEXIS's real AdMob App ID (referenced as $(GAD_APPLICATION_IDENTIFIER)
+        # from LEXIS/Info.plist). DEBUG still requests Google's TEST rewarded
+        # unit — see AdsConfig — so you never serve yourself live ads.
+        GAD_APPLICATION_IDENTIFIER: "ca-app-pub-4156851882993001~1119833482"
 
   # Home Screen widget showing the Daily Challenge streak and whether
   # today's puzzle is done. Reads the same App Group container the main app

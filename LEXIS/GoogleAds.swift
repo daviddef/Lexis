@@ -30,10 +30,10 @@ import UIKit
 
 enum AdsConfig {
     /// Your real AdMob IDs. Leave EMPTY to ship with no ads (release shows none).
-    /// App ID looks like  ca-app-pub-4156851882993001~1234567890
-    /// Unit ID looks like ca-app-pub-4156851882993001/1234567890
-    static let realAppID = ""
-    static let realRewardedUnitID = ""
+    /// App ID (with ~) also lives in project.yml as GAD_APPLICATION_IDENTIFIER.
+    /// Unit ID (with /) is the LEXIS "Power-up Reward" REWARDED unit.
+    static let realAppID = "ca-app-pub-4156851882993001~1119833482"
+    static let realRewardedUnitID = "ca-app-pub-4156851882993001/6316319843"
 
     /// Google's official test IDs — safe to use forever in DEBUG, and the only
     /// way to exercise a real ad render without a configured account.
