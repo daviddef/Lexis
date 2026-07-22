@@ -339,7 +339,7 @@
 				CODE_SIGN_ENTITLEMENTS = LEXIS/LEXIS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GAD_APPLICATION_IDENTIFIER = "ca-app-pub-4156851882993001~1119833482";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -357,7 +357,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -372,7 +372,7 @@
 				CODE_SIGN_ENTITLEMENTS = LEXIS/LEXIS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GAD_APPLICATION_IDENTIFIER = "ca-app-pub-4156851882993001~1119833482";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -390,7 +390,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -403,7 +403,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LexisWidget/LexisWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LexisWidget/Info.plist;
@@ -413,7 +413,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis.widget;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -490,7 +490,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LexisWidget/LexisWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L9SAXP2E2W;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LexisWidget/Info.plist;
@@ -500,7 +500,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.daviddefranceski.lexis.widget;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
