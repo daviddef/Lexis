@@ -174,3 +174,30 @@ struct PressableModifier: ViewModifier {
 extension View {
     func pressable() -> some View { modifier(PressableModifier()) }
 }
+
+// MARK: - iPad layout
+
+// Phone-designed full-screen views (menu, game over, result screens) otherwise
+// stretch edge-to-edge on iPad — buttons span the whole display and text reads
+// tiny against all that width. This constrains the content to a centred column
+// on the REGULAR width class (iPad, and iPhone landscape on big phones) while
+// leaving COMPACT width (portrait iPhone) untouched. LEXIS must ship universal
+// (2.0 shipped universal; Apple's QA1623 blocks dropping iPad), so every
+// full-screen phone layout should wear this.
+struct IPadColumn: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var hSize
+    var maxWidth: CGFloat = 620
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: hSize == .regular ? maxWidth : .infinity)
+            .frame(maxWidth: .infinity)   // centre the column in the full width
+    }
+}
+
+extension View {
+    /// Constrain phone-designed content to a centred column on iPad / regular
+    /// width; no-op on compact (portrait iPhone).
+    func iPadColumn(_ maxWidth: CGFloat = 620) -> some View {
+        modifier(IPadColumn(maxWidth: maxWidth))
+    }
+}

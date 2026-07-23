@@ -83,6 +83,7 @@ struct WeeklyResultView: View {
 
                 Spacer()
             }
+            .iPadColumn()
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: ["I scored \(score) in this week's LEXIS \(weekly.event.title). Can you beat it?"])

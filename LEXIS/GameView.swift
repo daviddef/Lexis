@@ -2962,6 +2962,7 @@ struct GameOverView: View {
                 // internal 24 lands it at 24 too, identical to the menu.)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
+                .iPadColumn()
             }
             .scaleEffect(scale)
             .opacity(opacity)
@@ -3407,6 +3408,7 @@ struct DuelResultView: View {
 
                 Spacer()
             }
+            .iPadColumn()
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: ["I scored \(score) in a LEXIS duel — enter code \(code) to play the exact same letters and beat me. Play LEXIS."])
@@ -3531,6 +3533,7 @@ struct DailyResultView: View {
                             .foregroundColor(.lexisMid)
                             .padding(.bottom, 20)
                     }
+                    .iPadColumn()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
