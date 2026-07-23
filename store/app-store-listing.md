@@ -65,4 +65,4 @@ One letter. One word. One life. Download LEXIS and find the words hiding in the 
 - **This 2.1 build serves live AdMob rewarded ads**, so the label MUST declare, under **Data Used to Track You**: **Third-Party Advertising** and **Device ID (IDFA)**. The App Tracking Transparency prompt is wired (the usage string is in the build). Plus Game Center (Apple-handled). No analytics vendor is attached yet, so nothing to declare there. Getting this right is what matches the ATT prompt the binary shows — a mismatch is a Guideline 2.3 rejection.
 
 ## Device support
-- **iPhone only** (`TARGETED_DEVICE_FAMILY: "1"`). iPad is deliberately deferred until the in-game board has a proper iPad layout — so no iPad screenshots are required for this submission.
+- **Universal — iPhone + iPad** (`TARGETED_DEVICE_FAMILY: "1,2"`). 2.0 shipped universal, so Apple (QA1623) blocks dropping iPad in an update. The iPad board was verified acceptable (centered, full-height, grid-aligned). **iPad 13″ screenshots are therefore required** — captured in `store/screenshots/ipad/`.

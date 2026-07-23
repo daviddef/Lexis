@@ -63,19 +63,20 @@ targets:
         DEVELOPMENT_TEAM: L9SAXP2E2W
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "5.0"
-        # iPhone-only (was "1,2"). LEXIS is a portrait, phone-shaped game and the
-        # in-game board isn't tuned for iPad, so shipping universal would be a
-        # review risk (broken layout on the reviewer's iPad) and force an iPad
-        # screenshot set. Add iPad back as a real feature once the board has a
-        # proper iPad layout. The bundled iPad icons are harmless when unused.
-        TARGETED_DEVICE_FAMILY: "1"
+        # MUST stay universal ("1,2"). Version 2.0 was approved as universal, and
+        # Apple's QA1623 forbids an update that drops a previously-supported
+        # device family — an iPhone-only ("1") upload is rejected at validation:
+        # "This bundle does not support one or more of the devices supported by
+        # the previous app version." So iPad support is locked in; the in-game
+        # board must be made acceptable on iPad rather than dropped.
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: LEXIS
         MARKETING_VERSION: "2.1"
-        CURRENT_PROJECT_VERSION: "2"
+        CURRENT_PROJECT_VERSION: "3"
         # The board is a tall portrait layout with no landscape support built
         # in, so rather than declaring all 4 orientations (which App Store
         # Connect otherwise requires for iPad multitasking), we opt out of
@@ -123,9 +124,9 @@ targets:
         DEVELOPMENT_TEAM: L9SAXP2E2W
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: LexisWidget/Info.plist
         MARKETING_VERSION: "2.1"
-        CURRENT_PROJECT_VERSION: "2"
+        CURRENT_PROJECT_VERSION: "3"
         SKIP_INSTALL: YES

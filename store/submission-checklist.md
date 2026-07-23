@@ -14,7 +14,7 @@ Apple requires **iPhone 6.9″** (1320 × 2868). Captured set lives in
 - [x] `02-gameplay.png` — ocean scene, words glowing (the 8-way hook)
 - [x] `03-gameover.png` — new top score
 - [ ] *(optional)* Collection + combo/burst shots for a fuller listing
-- [ ] **iPad 13″** set — **only if iPad ships.** See "Decide: iPad" below.
+- [x] **iPad 13″** set (required — universal) → `store/screenshots/ipad/`
 
 ## Store metadata
 - [ ] Name, subtitle, promo text, keywords, description → from `app-store-listing.md`
@@ -40,10 +40,14 @@ Apple requires **iPhone 6.9″** (1320 × 2868). Captured set lives in
       leaderboards + 7 achievements and upload the 13 icons.
       Everything is in `store/game-center-setup.md` + `store/gamecenter-icons/`.
 
-## Device support — decided
-- [x] **iPhone-only** (`TARGETED_DEVICE_FAMILY: "1"`). Removes the iPad review
-      risk and the iPad screenshot requirement. iPad returns once the in-game
-      board has a real iPad layout.
+## Device support — universal (forced)
+- [x] **Universal, iPhone + iPad** (`TARGETED_DEVICE_FAMILY: "1,2"`). iPhone-only
+      is NOT possible: 2.0 shipped universal, and Apple's QA1623 rejects an
+      update that drops a device family ("This bundle does not support one or
+      more of the devices supported by the previous app version"). Verified the
+      iPad board is acceptable (centered, full-height, aligned).
+- [x] **iPad 13″ screenshots** — in `store/screenshots/ipad/` (required now that
+      iPad support is locked in).
 
 ## Known gap (not a hard blocker, but you're launching blind)
 - [ ] **No analytics vendor attached** — `Analytics.attachDefaultSinks()` is
