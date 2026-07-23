@@ -63,7 +63,12 @@ targets:
         DEVELOPMENT_TEAM: L9SAXP2E2W
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1,2"
+        # iPhone-only (was "1,2"). LEXIS is a portrait, phone-shaped game and the
+        # in-game board isn't tuned for iPad, so shipping universal would be a
+        # review risk (broken layout on the reviewer's iPad) and force an iPad
+        # screenshot set. Add iPad back as a real feature once the board has a
+        # proper iPad layout. The bundled iPad icons are harmless when unused.
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -118,7 +123,7 @@ targets:
         DEVELOPMENT_TEAM: L9SAXP2E2W
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: LexisWidget/Info.plist
         MARKETING_VERSION: "2.1"

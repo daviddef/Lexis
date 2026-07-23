@@ -46,8 +46,8 @@ Find them, clear them, and keep the board from filling. Simple to learn, endless
 
 One letter. One word. One life. Download LEXIS and find the words hiding in the fall.
 
-## What's New (v1.0)
-`LEXIS is here! One letter falls, you spell words in 8 directions. Daily challenges, weekly events, Endless mode, power-ups, themes, and more. Thanks for playing — tell us what you think.`
+## What's New (v2.1)
+`New this update: animated board scenes (dive under the ocean, watch a desert sunset), a movable tap-to-drop button, smoother slide-to-soft-drop controls, and a bunch of polish. One letter falls, you spell words in 8 directions — thanks for playing!`
 
 ---
 
@@ -62,4 +62,7 @@ One letter. One word. One life. Download LEXIS and find the words hiding in the 
 - **Copyright:** `© 2026 David Defranceski`
 
 ## Privacy nutrition label
-- **This 1.0 build has no ads/analytics vendor wired**, so declare only what's true: Game Center (Apple-handled). If you turn on the analytics vendor before submitting, add "Product Interaction" (not linked to identity). When you add AdMob in a later build, add the "Third-Party Advertising" / device-identifier disclosures and the App Tracking Transparency flow (the usage string is already in the build).
+- **This 2.1 build serves live AdMob rewarded ads**, so the label MUST declare, under **Data Used to Track You**: **Third-Party Advertising** and **Device ID (IDFA)**. The App Tracking Transparency prompt is wired (the usage string is in the build). Plus Game Center (Apple-handled). No analytics vendor is attached yet, so nothing to declare there. Getting this right is what matches the ATT prompt the binary shows — a mismatch is a Guideline 2.3 rejection.
+
+## Device support
+- **iPhone only** (`TARGETED_DEVICE_FAMILY: "1"`). iPad is deliberately deferred until the in-game board has a proper iPad layout — so no iPad screenshots are required for this submission.

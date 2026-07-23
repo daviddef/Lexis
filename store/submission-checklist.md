@@ -40,12 +40,10 @@ Apple requires **iPhone 6.9″** (1320 × 2868). Captured set lives in
       leaderboards + 7 achievements and upload the 13 icons.
       Everything is in `store/game-center-setup.md` + `store/gamecenter-icons/`.
 
-## Decide: iPad
-Currently **universal** (`TARGETED_DEVICE_FAMILY: "1,2"`). The in-game board is
-untested on iPad and likely mis-proportioned — a Guideline 2.1/2.3 risk, and it
-forces the iPad screenshot set. Roadmap recommendation: **ship iPhone-only for
-2.1** (one-line change to `"1"`), add iPad as a real follow-up.
-- [ ] Choose: iPhone-only now, or fix + screenshot iPad first.
+## Device support — decided
+- [x] **iPhone-only** (`TARGETED_DEVICE_FAMILY: "1"`). Removes the iPad review
+      risk and the iPad screenshot requirement. iPad returns once the in-game
+      board has a real iPad layout.
 
 ## Known gap (not a hard blocker, but you're launching blind)
 - [ ] **No analytics vendor attached** — `Analytics.attachDefaultSinks()` is
