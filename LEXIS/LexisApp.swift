@@ -33,8 +33,14 @@ struct LexisApp: App {
             // Rewarded ads: resolve consent + ATT, then attach the AdMob
             // provider. No-ops safely when ads aren't configured (release
             // builds with no real ad unit stay ad-free and never prompt) —
-            // see AdsConfig in GoogleAds.swift.
-            await AdsBootstrap.start()
+            // see AdsConfig in GoogleAds.swift. Skipped entirely in screenshot
+            // mode so the ATT prompt never covers a store screenshot.
+            #if DEBUG
+            let screenshotMode = ProcessInfo.processInfo.environment["LEXIS_SHOT"] != nil
+            #else
+            let screenshotMode = false
+            #endif
+            if screenshotMode { AdManager.shared.configure(nil) } else { await AdsBootstrap.start() }
         }
     }
     

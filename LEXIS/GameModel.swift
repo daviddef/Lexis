@@ -627,6 +627,64 @@ class GameModel: ObservableObject {
         GoalsManager.shared.onRunStarted()
     }
 
+    #if DEBUG
+    // MARK: - Screenshot seeding (DEBUG only, never shipped)
+    // Invoked by the LEXIS_SHOT launch env (see GameView) so App Store
+    // screenshots can be captured from the simulator without hand-playing to a
+    // photogenic moment. Not part of gameplay.
+
+    private func placeWord(_ word: String, row: Int, startCol: Int) {
+        for (i, ch) in word.enumerated() where startCol + i < GameConstants.cols {
+            let c = startCol + i
+            grid[row][c] = LetterTile(letter: ch, row: row, col: c)
+        }
+    }
+
+    func debugSeedMidGame() {
+        startGame()
+        dropTimer?.invalidate()          // freeze the composition for the shot
+        isTutorialActive = false
+        tutorialLetterQueue = []
+        grid = Array(repeating: Array(repeating: nil, count: GameConstants.cols), count: GameConstants.rows)
+
+        // A crossword-y spread so several words glow at once — showcases the
+        // 8-way reading. All are common dictionary words.
+        placeWord("PUZZLE", row: 13, startCol: 2)       // horizontal
+        placeWord("PLAY",   row: 11, startCol: 0)       // horizontal
+        for (i, ch) in "WORD".enumerated() {            // vertical, col 8
+            grid[10 + i][8] = LetterTile(letter: ch, row: 10 + i, col: 8)
+        }
+        grid[12][2] = LetterTile(letter: "J", row: 12, col: 2)
+        grid[12][6] = LetterTile(letter: "K", row: 12, col: 6)
+        grid[13][0] = LetterTile(letter: "Q", row: 13, col: 0)
+
+        // A falling piece hanging mid-board.
+        fallingLetter = "S"; fallingCol = 5; fallingRow = 4; isWildcard = false
+
+        score = 6420; level = 5; comboCount = 0
+        markGlowingWords()
+
+        // Dress the board for the shot.
+        settings.tileTheme = .ocean
+        settings.equippedBackdrop = .oceanDeep
+        phase = .playing
+    }
+
+    func debugSeedGameOver() {
+        debugSeedMidGame()
+        let sample = ["PUZZLE", "PLAY", "WORD", "QUARTZ", "JAZZY", "VORTEX"]
+        foundWords = sample.map { WordResult(word: $0, tiles: [], score: $0.count * 40, isChain: false) }
+        blocksDropped = 128
+        // Make this run a genuine new record so "NEW TOP SCORE" is consistent
+        // with the SCORE == BEST hero.
+        settings.recordScore(8750, difficulty: settings.difficulty, wordsFound: 31)
+        highScore = 8750
+        score = 8750
+        dropTimer?.invalidate()
+        phase = .gameOver
+    }
+    #endif
+
     // Wall-clock start of the current run, for the game_over duration metric.
     private var gameStartDate = Date()
 

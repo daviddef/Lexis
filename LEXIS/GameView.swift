@@ -234,6 +234,19 @@ struct GameView: View {
                     model.startGame()
                 }
             }
+            #if DEBUG
+            // App Store screenshot harness: jump straight to a seeded state so
+            // shots can be captured from the simulator. Driven by the LEXIS_SHOT
+            // launch env; absent = normal app. Never ships (DEBUG only).
+            .task {
+                switch ProcessInfo.processInfo.environment["LEXIS_SHOT"] {
+                case "game":     showSplash = false; model.debugSeedMidGame()
+                case "gameover": showSplash = false; model.debugSeedGameOver()
+                case "menu":     showSplash = false
+                default:         break
+                }
+            }
+            #endif
         }
     }
 
