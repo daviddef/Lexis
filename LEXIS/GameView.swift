@@ -25,6 +25,7 @@ struct GameView: View {
     @ObservedObject private var profile = PlayerProfile.shared
     @ObservedObject private var goals = GoalsManager.shared
     @ObservedObject private var cosmetics = CosmeticsStore.shared
+    @ObservedObject private var ads = AdManager.shared
     @State private var celebration: CelebrationItem?
     @State private var showSplash = true
     @State private var showWildcardPicker = false
@@ -258,14 +259,40 @@ struct GameView: View {
     // the whole PlayingView layout on-screen everywhere.
     private func tileSize(for size: CGSize) -> CGFloat {
         let widthBased = (size.width - 2 * boardHorizontalPadding) / CGFloat(GameConstants.cols) - 2
-        // Budget for the non-board chrome: header, recent-words strip, and
-        // the (usually empty) power-up panel. Tuned so a 14-row board fills
-        // the width edge to edge (tile size limited by width, not height)
-        // on a typical phone. If you change GameConstants.rows/cols or add
-        // substantial new permanent UI chrome, revisit this constant.
-        let reservedChromeHeight: CGFloat = 170
+        // Budget for the non-board chrome: header, recent-words strip, and the
+        // power-up panel. 170 covers the base chrome with an EMPTY panel; the
+        // panel is variable, so we add the height of whatever power-up rows are
+        // actually showing (controlsPanelReserve). Without this, gaining e.g. a
+        // utility charge grows the panel past the fixed budget and pushes the
+        // Freeze/Reroll/Peek row off the bottom of the screen. On a typical
+        // phone the board is width-limited, so small reserves are absorbed by
+        // the layout's Spacer and the board doesn't resize; only a large panel
+        // shrinks the board slightly to make room.
+        let reservedChromeHeight: CGFloat = 170 + controlsPanelReserve
         let heightBased = (size.height - reservedChromeHeight) / CGFloat(GameConstants.rows) - 2
         return min(widthBased, heightBased)
+    }
+
+    // Extra chrome height for whatever the controls panel is currently showing.
+    // Must mirror the conditions in PlayingView.controlsPanel exactly, and be
+    // generous — over-reserving within the layout's slack is free, while
+    // under-reserving clips buttons off the bottom. Values are estimated row
+    // heights (content + the panel's 10pt inter-row spacing).
+    private var controlsPanelReserve: CGFloat {
+        guard model.phase == .playing || model.phase == .paused else { return 0 }
+        var h: CGFloat = 0
+        if model.bombsAvailable > 0 { h += 60 }                                   // CLEAR PATH button
+        if model.tipsAvailable > 0 { h += 46 }                                    // TIP reminder banner
+        if model.pendingWords.isEmpty && model.tipsAvailable > 0 && model.hintTargetCol == nil {
+            h += 50                                                               // HINT button
+        }
+        if model.hintDirection != nil { h += 44 }                                 // hint direction banner
+        if model.utilityCharges > 0 {
+            h += 92                                                               // label + Freeze/Reroll/Peek row
+        } else if ads.isReady && !model.isDailyMode && !model.isDuelMode && !model.isWeeklyMode {
+            h += 58                                                               // WATCH → power-up button
+        }
+        return h
     }
 }
 
